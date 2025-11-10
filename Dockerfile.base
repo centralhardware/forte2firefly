@@ -1,15 +1,24 @@
 FROM eclipse-temurin:24-jre
 
-# Install Tesseract and dependencies from standard repos (compatible with tess4j 5.12.0)
+# Use Ubuntu 24.04 (Noble) repos for newer Tesseract
 RUN apt-get update && \
     apt-get install -y \
+        ca-certificates \
+        gnupg && \
+    echo "deb http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse" > /etc/apt/sources.list.d/noble.list && \
+    echo "deb http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse" >> /etc/apt/sources.list.d/noble.list && \
+    apt-get update && \
+    apt-get install -y -t noble \
         tesseract-ocr \
-        tesseract-ocr-eng && \
+        tesseract-ocr-eng \
+        libtesseract5 \
+        libleptonica-5 && \
+    rm /etc/apt/sources.list.d/noble.list && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Verify installation
-RUN tesseract --version
+RUN tesseract --version && echo "Tesseract installed successfully"
 
 # Set Tesseract data directory
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata/
