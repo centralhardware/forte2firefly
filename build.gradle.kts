@@ -12,7 +12,7 @@ repositories {
     mavenCentral()
 }
 
-val ktorVersion = "3.0.3"
+val ktorVersion = "3.3.2"
 val tgbotapiVersion = "24.0.0"
 val logbackVersion = "1.5.15"
 val tesseractVersion = "5.15.0"
