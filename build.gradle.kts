@@ -13,7 +13,7 @@ repositories {
 }
 
 val ktorVersion = "3.0.3"
-val tgbotapiVersion = "24.0.0"
+val tgbotapiVersion = "30.0.1"
 val logbackVersion = "1.5.15"
 val tesseractVersion = "5.15.0"
 
