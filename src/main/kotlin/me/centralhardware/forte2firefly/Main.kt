@@ -36,7 +36,11 @@ fun main() = runBlocking {
         val bot = telegramBot(telegramBotToken)
         val fireflyClient = FireflyApiClient(fireflyBaseUrl, fireflyToken)
         val parser = TransactionParser()
-        val ocrService = OCRService()
+
+        // Tesseract data path - в Docker образе это /usr/share/tesseract-ocr/5/tessdata/
+        val tessdataPath = System.getenv("TESSDATA_PREFIX") ?: "/usr/share/tesseract-ocr/5/tessdata/"
+        logger.info("Using Tesseract data path: $tessdataPath")
+        val ocrService = OCRService(tessdataPath = tessdataPath)
 
         val botHandler = TelegramBotHandler(
             bot = bot,
