@@ -1,5 +1,7 @@
 package me.centralhardware.forte2firefly.service
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import net.sourceforge.tess4j.Tesseract
 import net.sourceforge.tess4j.TesseractException
 import org.slf4j.LoggerFactory
@@ -97,7 +99,7 @@ class OCRService(
      * @param photoBytes байты фотографии
      * @return распознанный текст
      */
-    fun recognizeTextWithPreprocessing(photoBytes: ByteArray): String {
+    suspend fun recognizeTextWithPreprocessing(photoBytes: ByteArray): String = withContext(Dispatchers.IO) {
         try {
             logger.info("Starting OCR with preprocessing for image (${photoBytes.size} bytes)")
 
@@ -105,22 +107,35 @@ class OCRService(
             val originalImage: BufferedImage = ImageIO.read(inputStream)
                 ?: throw IllegalArgumentException("Could not read image from bytes")
 
+            logger.info("Image loaded, starting preprocessing...")
             // Предварительная обработка изображения для улучшения распознавания
             val processedImage = preprocessImage(originalImage)
 
-            // Выполняем OCR на обработанном изображении
+            logger.info("Preprocessing complete, running Tesseract OCR...")
+            // Выполняем OCR на обработанном изображении в отдельном потоке
             val result = tesseract.doOCR(processedImage)
 
             logger.info("OCR with preprocessing completed. Text length: ${result.length} characters")
             logger.debug("OCR result: $result")
 
-            return result.trim()
+            result.trim()
 
         } catch (e: Exception) {
             logger.error("Error during OCR with preprocessing", e)
+            e.printStackTrace()
             // Fallback на обычное распознавание
             logger.info("Falling back to standard OCR")
-            return recognizeText(photoBytes)
+            recognizeTextBlocking(photoBytes)
+        }
+    }
+
+    private fun recognizeTextBlocking(photoBytes: ByteArray): String {
+        return try {
+            recognizeText(photoBytes)
+        } catch (e: Exception) {
+            logger.error("Even fallback OCR failed", e)
+            e.printStackTrace()
+            ""
         }
     }
 

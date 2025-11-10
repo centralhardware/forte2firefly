@@ -71,7 +71,11 @@ jib {
     }
     container {
         mainClass = "me.centralhardware.forte2firefly.MainKt"
-        jvmFlags = listOf("-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0")
+        jvmFlags = listOf(
+            "-XX:+UseContainerSupport",
+            "-XX:MaxRAMPercentage=75.0",
+            "--enable-native-access=ALL-UNNAMED"
+        )
         creationTime = "USE_CURRENT_TIMESTAMP"
         labels = mapOf(
             "org.opencontainers.image.source" to (System.getenv("GITHUB_SERVER_URL")?.let { server ->
