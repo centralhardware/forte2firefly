@@ -15,7 +15,7 @@ repositories {
 val ktorVersion = "3.0.3"
 val tgbotapiVersion = "24.0.0"
 val logbackVersion = "1.5.15"
-val tesseractVersion = "5.15.0"
+val tesseractVersion = "5.12.0"
 
 dependencies {
     // Telegram Bot API
