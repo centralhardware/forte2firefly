@@ -1,46 +1,22 @@
 FROM eclipse-temurin:24-jre
 
-# Install build dependencies and newer Leptonica from source
+# Add Tesseract PPA для получения последней версии
 RUN apt-get update && \
-    apt-get install -y \
-        wget \
-        build-essential \
-        autoconf \
-        automake \
-        libtool \
-        pkg-config \
-        libpng-dev \
-        libjpeg-dev \
-        libtiff-dev \
-        libwebp-dev \
-        libopenjp2-7-dev \
-        libgif-dev \
-        zlib1g-dev && \
-    # Build Leptonica from source (newer version with all format support)
-    cd /tmp && \
-    wget http://www.leptonica.org/source/leptonica-1.84.1.tar.gz && \
-    tar -xzf leptonica-1.84.1.tar.gz && \
-    cd leptonica-1.84.1 && \
-    ./configure --with-jpeg --with-png --with-tiff --with-webp --with-jp2k --with-gif && \
-    make && \
-    make install && \
-    ldconfig && \
-    cd / && \
-    rm -rf /tmp/leptonica* && \
-    # Now install Tesseract
+    apt-get install -y software-properties-common && \
+    add-apt-repository -y ppa:alex-p/tesseract-ocr-devel && \
+    apt-get update && \
     apt-get install -y \
         tesseract-ocr \
-        tesseract-ocr-eng && \
-    # Keep runtime libraries, only remove build tools
-    apt-get remove -y wget build-essential autoconf automake libtool pkg-config && \
-    apt-get autoremove -y && \
+        tesseract-ocr-eng \
+        libleptonica-dev \
+        libtesseract-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Verify Tesseract installation
+# Verify installation
 RUN tesseract --version && \
-    echo "Leptonica version:" && \
-    ldconfig -p | grep lept
+    echo "Library paths:" && \
+    ldconfig -p | grep -E "(lept|tess)"
 
 # Set Tesseract data directory
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata/
