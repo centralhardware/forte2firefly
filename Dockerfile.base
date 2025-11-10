@@ -1,20 +1,43 @@
 FROM eclipse-temurin:24-jre
 
-# Install Tesseract OCR, language data and required libraries for tess4j
+# Install build dependencies and newer Leptonica from source
 RUN apt-get update && \
     apt-get install -y \
+        wget \
+        build-essential \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
+        libpng-dev \
+        libjpeg-dev \
+        libtiff-dev \
+        zlib1g-dev && \
+    # Build Leptonica from source (newer version)
+    cd /tmp && \
+    wget http://www.leptonica.org/source/leptonica-1.84.1.tar.gz && \
+    tar -xzf leptonica-1.84.1.tar.gz && \
+    cd leptonica-1.84.1 && \
+    ./configure && \
+    make && \
+    make install && \
+    ldconfig && \
+    cd / && \
+    rm -rf /tmp/leptonica* && \
+    # Now install Tesseract
+    apt-get install -y \
         tesseract-ocr \
-        tesseract-ocr-eng \
-        libtesseract-dev \
-        libleptonica-dev && \
+        tesseract-ocr-eng && \
+    # Clean up
+    apt-get remove -y wget build-essential autoconf automake libtool && \
+    apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Verify Tesseract installation and find tessdata location
+# Verify Tesseract installation
 RUN tesseract --version && \
-    echo "Searching for tessdata directory:" && \
-    find /usr/share -name "tessdata" -type d 2>/dev/null || true
+    echo "Leptonica version:" && \
+    ldconfig -p | grep lept
 
 # Set Tesseract data directory
-# In Debian/Ubuntu, tessdata is usually in /usr/share/tesseract-ocr/5/tessdata/
 ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata/
