@@ -1,5 +1,6 @@
 package me.centralhardware.forte2firefly
 
+import kotlinx.coroutines.runBlocking
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 import java.io.File
@@ -7,7 +8,7 @@ import java.io.File
 /**
  * Простая программа для тестирования OCR распознавания
  */
-fun main() {
+fun main() = runBlocking {
     println("=== Forte2Firefly OCR Test ===\n")
     
     // Загружаем тестовое фото
@@ -16,7 +17,7 @@ fun main() {
     if (!photoFile.exists()) {
         println("❌ Фото не найдено: ${photoFile.absolutePath}")
         println("Пожалуйста, убедитесь что photo_2025-11-10_02-18-19.jpg находится в корне проекта")
-        return
+        return@runBlocking
     }
 
     println("📷 Загрузка фото: ${photoFile.name}")
@@ -36,7 +37,7 @@ fun main() {
         println("  • macOS: brew install tesseract")
         println("  • Ubuntu: sudo apt-get install tesseract-ocr")
         println("  • Проверка: tesseract --version")
-        return
+        return@runBlocking
     }
     println("✅ OCR инициализирован\n")
 
