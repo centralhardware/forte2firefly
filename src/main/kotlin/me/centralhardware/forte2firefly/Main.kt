@@ -5,9 +5,22 @@ import kotlinx.coroutines.runBlocking
 import me.centralhardware.forte2firefly.service.*
 import org.slf4j.LoggerFactory
 
-fun main() = runBlocking {
+fun main() {
     val logger = LoggerFactory.getLogger("Main")
+    logger.info("=== Application starting ===")
 
+    try {
+        runBlocking {
+            startBot(logger)
+        }
+    } catch (e: Exception) {
+        logger.error("FATAL ERROR IN MAIN", e)
+        e.printStackTrace()
+        throw e
+    }
+}
+
+suspend fun startBot(logger: org.slf4j.Logger) {
     try {
         // Загрузка конфигурации из переменных окружения
         val telegramBotToken = System.getenv("TELEGRAM_BOT_TOKEN")
@@ -33,15 +46,33 @@ fun main() = runBlocking {
         logger.info("Default currency: $defaultCurrency")
         logger.info("Configured accounts: ${currencyAccounts.keys.joinToString(", ")}")
 
+        logger.info("Creating Telegram bot...")
         val bot = telegramBot(telegramBotToken)
+        logger.info("Telegram bot created successfully")
+
+        logger.info("Creating Firefly API client...")
         val fireflyClient = FireflyApiClient(fireflyBaseUrl, fireflyToken)
+        logger.info("Firefly API client created successfully")
+
+        logger.info("Creating transaction parser...")
         val parser = TransactionParser()
+        logger.info("Transaction parser created successfully")
 
         // Tesseract data path - в Docker образе это /usr/share/tesseract-ocr/5/tessdata/
         val tessdataPath = System.getenv("TESSDATA_PREFIX") ?: "/usr/share/tesseract-ocr/5/tessdata/"
         logger.info("Using Tesseract data path: $tessdataPath")
-        val ocrService = OCRService(tessdataPath = tessdataPath)
 
+        logger.info("Creating OCR service...")
+        val ocrService = try {
+            OCRService(tessdataPath = tessdataPath)
+        } catch (e: Exception) {
+            logger.error("FAILED TO CREATE OCR SERVICE", e)
+            e.printStackTrace()
+            throw e
+        }
+        logger.info("OCR service created successfully")
+
+        logger.info("Creating bot handler...")
         val botHandler = TelegramBotHandler(
             bot = bot,
             fireflyClient = fireflyClient,
@@ -50,14 +81,22 @@ fun main() = runBlocking {
             defaultCurrency = defaultCurrency,
             currencyAccounts = currencyAccounts
         )
+        logger.info("Bot handler created successfully")
 
         logger.info("Bot initialized successfully, starting polling...")
-        
+
         // Запуск бота
-        botHandler.start()
+        try {
+            botHandler.start()
+        } catch (e: Exception) {
+            logger.error("ERROR DURING BOT POLLING", e)
+            e.printStackTrace()
+            throw e
+        }
 
     } catch (e: Exception) {
-        logger.error("Fatal error", e)
+        logger.error("FATAL ERROR IN START BOT", e)
+        e.printStackTrace()
         throw e
     }
 }
