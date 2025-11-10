@@ -120,7 +120,7 @@ class OCRService(
 
             result.trim()
 
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Error during OCR with preprocessing", e)
             e.printStackTrace()
             // Fallback на обычное распознавание
