@@ -33,7 +33,6 @@ fun main() = runBlocking {
         logger.info("Default currency: $defaultCurrency")
         logger.info("Configured accounts: ${currencyAccounts.keys.joinToString(", ")}")
 
-        // Инициализация сервисов
         val bot = telegramBot(telegramBotToken)
         val fireflyClient = FireflyApiClient(fireflyBaseUrl, fireflyToken)
         val parser = TransactionParser()
