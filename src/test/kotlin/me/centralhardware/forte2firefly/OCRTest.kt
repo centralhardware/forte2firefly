@@ -1,5 +1,6 @@
 package me.centralhardware.forte2firefly
 
+import kotlinx.coroutines.runBlocking
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 import org.junit.jupiter.api.Test
@@ -10,14 +11,14 @@ import kotlin.test.assertTrue
 class OCRTest {
 
     @Test
-    fun `test OCR recognition with sample photo`() {
+    fun `test OCR recognition with sample photo`() = runBlocking {
         // Загружаем тестовое фото
         val photoFile = File("photo_2025-11-10_02-18-19.jpg")
         
         if (!photoFile.exists()) {
             println("⚠️ Test photo not found at: ${photoFile.absolutePath}")
             println("Please make sure photo_2025-11-10_02-18-19.jpg exists in project root")
-            return
+            return@runBlocking
         }
 
         println("📷 Loading photo: ${photoFile.absolutePath}")
@@ -88,12 +89,12 @@ class OCRTest {
     }
 
     @Test
-    fun `test OCR with preprocessing`() {
+    fun `test OCR with preprocessing`() = runBlocking {
         val photoFile = File("photo_2025-11-10_02-18-19.jpg")
 
         if (!photoFile.exists()) {
             println("⚠️ Test photo not found, skipping test")
-            return
+            return@runBlocking
         }
 
         println("📷 Testing OCR with preprocessing...")
@@ -103,7 +104,7 @@ class OCRTest {
             OCRService()
         } catch (e: Exception) {
             println("❌ Tesseract not available, skipping test")
-            return
+            return@runBlocking
         }
 
         println("\n🔍 Running OCR with preprocessing...")
