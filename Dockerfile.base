@@ -12,13 +12,16 @@ RUN apt-get update && \
         libpng-dev \
         libjpeg-dev \
         libtiff-dev \
+        libwebp-dev \
+        libopenjp2-7-dev \
+        libgif-dev \
         zlib1g-dev && \
-    # Build Leptonica from source (newer version)
+    # Build Leptonica from source (newer version with all format support)
     cd /tmp && \
     wget http://www.leptonica.org/source/leptonica-1.84.1.tar.gz && \
     tar -xzf leptonica-1.84.1.tar.gz && \
     cd leptonica-1.84.1 && \
-    ./configure && \
+    ./configure --with-jpeg --with-png --with-tiff --with-webp --with-jp2k --with-gif && \
     make && \
     make install && \
     ldconfig && \
@@ -28,8 +31,8 @@ RUN apt-get update && \
     apt-get install -y \
         tesseract-ocr \
         tesseract-ocr-eng && \
-    # Clean up
-    apt-get remove -y wget build-essential autoconf automake libtool && \
+    # Keep runtime libraries, only remove build tools
+    apt-get remove -y wget build-essential autoconf automake libtool pkg-config && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
