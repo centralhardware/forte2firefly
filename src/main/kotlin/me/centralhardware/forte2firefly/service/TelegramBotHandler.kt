@@ -12,7 +12,6 @@ import me.centralhardware.forte2firefly.model.AttachmentRequest
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import org.slf4j.LoggerFactory
-import java.io.ByteArrayOutputStream
 
 class TelegramBotHandler(
     private val bot: TelegramBot,
@@ -24,6 +23,78 @@ class TelegramBotHandler(
 ) {
     private val logger = LoggerFactory.getLogger(TelegramBotHandler::class.java)
 
+    private suspend fun handleAttachmentReply(
+        message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<dev.inmo.tgbotapi.types.message.content.PhotoContent>,
+        replyTo: dev.inmo.tgbotapi.types.message.abstracts.Message
+    ) {
+        try {
+            logger.info("Processing attachment reply")
+
+            // Пытаемся извлечь ID транзакции из текста сообщения, на которое сделан reply
+            val replyText = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
+            val textContent = when (replyText) {
+                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyText.text
+                else -> {
+                    logger.warn("Reply message does not contain text")
+                    bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                    return
+                }
+            }
+
+            logger.info("Reply message text: $textContent")
+
+            // Извлекаем ID транзакции из текста (ищем строку вида "ID транзакции: 123" или "ID: 123")
+            val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
+            val matchResult = transactionIdRegex.find(textContent)
+            
+            if (matchResult == null) {
+                logger.warn("Transaction ID not found in reply message")
+                bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+                return
+            }
+
+            val transactionId = matchResult.groupValues[1]
+            logger.info("Extracted transaction ID: $transactionId")
+
+            bot.sendMessage(message.chat, "Прикрепляю фото к транзакции #$transactionId...")
+
+            // Получаем информацию о транзакции
+            val transaction = fireflyClient.getTransaction(transactionId)
+            val journalId = transaction.data.attributes.transactions.first().transactionJournalId
+
+            logger.info("Found transaction journal ID: $journalId")
+
+            // Скачиваем фото
+            val photoBytes = bot.downloadFile(message.content)
+            logger.info("Photo downloaded, size: ${photoBytes.size} bytes")
+
+            // Создаем attachment
+            val attachmentRequest = AttachmentRequest(
+                filename = "attachment_${System.currentTimeMillis()}.jpg",
+                attachableType = "TransactionJournal",
+                attachableId = journalId,
+                title = "Additional Photo",
+                notes = "Added via reply in Telegram Bot"
+            )
+
+            val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
+            logger.info("Attachment created with ID: ${attachmentResponse.data.id}")
+
+            // Загружаем фото
+            val uploadUrl = attachmentResponse.data.attributes.uploadUrl
+            if (uploadUrl != null) {
+                fireflyClient.uploadAttachment(uploadUrl, photoBytes)
+                logger.info("Photo uploaded successfully")
+            }
+
+            bot.sendMessage(message.chat, "✅ Фото успешно прикреплено к транзакции #$transactionId")
+
+        } catch (e: Exception) {
+            logger.error("Error processing attachment reply", e)
+            bot.sendMessage(message.chat, "❌ Ошибка при прикреплении фото: ${e.message ?: "Неизвестная ошибка"}")
+        }
+    }
+
     suspend fun start() {
         val botInfo = bot.getMe()
         logger.info("Bot started: @${botInfo.username}")
@@ -33,6 +104,14 @@ class TelegramBotHandler(
                 try {
                     val mediaGroupId = message.mediaGroupId?.string
                     logger.info("Received photo from user ${message.chat.id}, mediaGroupId: $mediaGroupId")
+
+                    // Проверяем, является ли это reply на предыдущее сообщение с ID транзакции
+                    val replyTo = message.replyTo
+                    if (replyTo != null) {
+                        logger.info("Photo is a reply to message: ${replyTo.messageId}")
+                        handleAttachmentReply(message, replyTo)
+                        return@onPhoto
+                    }
 
                     // Отправляем подтверждение получения только для первого фото в группе или одиночного фото
                     // (чтобы не спамить при media group)
@@ -250,10 +329,7 @@ class TelegramBotHandler(
 
                     } catch (e: Exception) {
                         logger.error("Error processing photo from gallery", e)
-                        val errorChat = (msg as? dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<*>)?.chat
-                        if (errorChat != null) {
-                            sendMessage(errorChat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
-                        }
+                        sendMessage(msg.sourceMessage.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
                     }
                 }
             }

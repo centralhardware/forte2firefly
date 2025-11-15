@@ -10,7 +10,6 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.ktor.utils.io.*
 import kotlinx.serialization.json.Json
 import me.centralhardware.forte2firefly.model.*
 import org.slf4j.LoggerFactory
@@ -98,6 +97,22 @@ class FireflyApiClient(
             logger.error("Firefly API error (${response.status}): $errorBody")
             throw RuntimeException("Failed to upload attachment to Firefly: ${response.status}. Response: $errorBody")
         }
+    }
+
+    suspend fun getTransaction(transactionId: String): TransactionResponse {
+        logger.info("Getting transaction by ID: $transactionId")
+
+        val response = client.get("/api/v1/transactions/$transactionId")
+
+        logger.info("Transaction retrieved with status: ${response.status}")
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            logger.error("Firefly API error (${response.status}): $errorBody")
+            throw RuntimeException("Failed to get transaction from Firefly: ${response.status}. Response: $errorBody")
+        }
+
+        return response.body()
     }
 
     fun close() {
