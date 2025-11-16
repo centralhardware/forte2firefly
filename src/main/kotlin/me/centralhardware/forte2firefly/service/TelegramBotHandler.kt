@@ -82,7 +82,7 @@ class TelegramBotHandler(
             when (val content = message.content) {
                 is dev.inmo.tgbotapi.types.message.content.PhotoContent -> {
                     filename = "photo_$timestamp.jpg"
-                    title = "Additional Photo"
+                    title = "Photo $timestamp"
                 }
                 is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
                     // Извлекаем расширение из оригинального файла, если есть
@@ -93,11 +93,11 @@ class TelegramBotHandler(
                     } else {
                         "document_$timestamp"
                     }
-                    title = "Additional Document"
+                    title = "Document $timestamp"
                 }
                 else -> {
                     filename = "attachment_$timestamp"
-                    title = "Additional Attachment"
+                    title = "Attachment $timestamp"
                 }
             }
 
