@@ -5,13 +5,17 @@ import dev.inmo.tgbotapi.extensions.api.bot.getMe
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.buildBehaviourWithLongPolling
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
+import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.utils.extensions.escapeMarkdownV2Common
 import me.centralhardware.forte2firefly.model.AttachmentRequest
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class TelegramBotHandler(
     private val bot: TelegramBot,
@@ -23,8 +27,8 @@ class TelegramBotHandler(
 ) {
     private val logger = LoggerFactory.getLogger(TelegramBotHandler::class.java)
 
-    private suspend fun handleAttachmentReply(
-        message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<dev.inmo.tgbotapi.types.message.content.PhotoContent>,
+    private suspend fun <T : MediaContent> handleAttachmentReply(
+        message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<T>,
         replyTo: dev.inmo.tgbotapi.types.message.abstracts.Message
     ) {
         try {
@@ -64,30 +68,59 @@ class TelegramBotHandler(
 
             logger.info("Found transaction journal ID: $journalId")
 
-            // Скачиваем фото
-            val photoBytes = bot.downloadFile(message.content)
-            logger.info("Photo downloaded, size: ${photoBytes.size} bytes")
+            // Скачиваем файл
+            val fileBytes = bot.downloadFile(message.content)
+            logger.info("File downloaded, size: ${fileBytes.size} bytes")
+
+            // Генерируем имя файла на основе даты и времени загрузки
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+            val timestamp = LocalDateTime.now().format(formatter)
+            
+            // Определяем имя файла и расширение в зависимости от типа контента
+            val filename: String
+            val title: String
+            when (val content = message.content) {
+                is dev.inmo.tgbotapi.types.message.content.PhotoContent -> {
+                    filename = "photo_$timestamp.jpg"
+                    title = "Additional Photo"
+                }
+                is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
+                    // Извлекаем расширение из оригинального файла, если есть
+                    val originalName = content.media.fileName
+                    val extension = originalName?.substringAfterLast('.', "")
+                    filename = if (!extension.isNullOrBlank()) {
+                        "document_$timestamp.$extension"
+                    } else {
+                        "document_$timestamp"
+                    }
+                    title = "Additional Document"
+                }
+                else -> {
+                    filename = "attachment_$timestamp"
+                    title = "Additional Attachment"
+                }
+            }
 
             // Создаем attachment
             val attachmentRequest = AttachmentRequest(
-                filename = "attachment_${System.currentTimeMillis()}.jpg",
+                filename = filename,
                 attachableType = "TransactionJournal",
                 attachableId = journalId,
-                title = "Additional Photo",
+                title = title,
                 notes = "Added via reply in Telegram Bot"
             )
 
             val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
             logger.info("Attachment created with ID: ${attachmentResponse.data.id}")
 
-            // Загружаем фото
+            // Загружаем файл
             val uploadUrl = attachmentResponse.data.attributes.uploadUrl
             if (uploadUrl != null) {
-                fireflyClient.uploadAttachment(uploadUrl, photoBytes)
-                logger.info("Photo uploaded successfully")
+                fireflyClient.uploadAttachment(uploadUrl, fileBytes)
+                logger.info("File uploaded successfully")
             }
 
-            bot.sendMessage(message.chat, "✅ Фото успешно прикреплено к транзакции #$transactionId")
+            bot.sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId")
 
         } catch (e: Exception) {
             logger.error("Error processing attachment reply", e)
@@ -239,6 +272,32 @@ class TelegramBotHandler(
                     sendMessage(
                         message.chat,
                         "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}"
+                    )
+                }
+            }
+
+            onDocument { message ->
+                try {
+                    logger.info("Received document from user ${message.chat.id}")
+
+                    // Проверяем, является ли это reply на предыдущее сообщение с ID транзакции
+                    val replyTo = message.replyTo
+                    if (replyTo != null) {
+                        logger.info("Document is a reply to message: ${replyTo.messageId}")
+                        handleAttachmentReply(message, replyTo)
+                        return@onDocument
+                    }
+
+                    // Если это не reply, отправляем предупреждение
+                    sendMessage(
+                        message.chat,
+                        "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции"
+                    )
+                } catch (e: Exception) {
+                    logger.error("Error processing document", e)
+                    sendMessage(
+                        message.chat,
+                        "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}"
                     )
                 }
             }
