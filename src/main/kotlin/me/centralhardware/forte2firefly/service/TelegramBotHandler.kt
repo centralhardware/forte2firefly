@@ -72,7 +72,14 @@ class TelegramBotHandler(
             val fileBytes = bot.downloadFile(message.content)
             logger.info("File downloaded, size: ${fileBytes.size} bytes")
 
-            // Генерируем имя файла на основе даты и времени загрузки
+            // Проверяем наличие текста в сообщении (caption для медиа)
+            val messageText = when (val content = message.content) {
+                is dev.inmo.tgbotapi.types.message.content.PhotoContent -> content.text
+                is dev.inmo.tgbotapi.types.message.content.DocumentContent -> content.text
+                else -> null
+            }?.trim()
+            
+            // Генерируем имя файла на основе даты и времени загрузки (fallback)
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
             val timestamp = LocalDateTime.now().format(formatter)
             
@@ -81,23 +88,44 @@ class TelegramBotHandler(
             val title: String
             when (val content = message.content) {
                 is dev.inmo.tgbotapi.types.message.content.PhotoContent -> {
-                    filename = "photo_$timestamp.jpg"
-                    title = "Photo $timestamp"
+                    // Если есть текст, используем его, иначе дату и время
+                    if (!messageText.isNullOrBlank()) {
+                        filename = "$messageText.jpg"
+                        title = messageText
+                    } else {
+                        filename = "photo_$timestamp.jpg"
+                        title = "Photo $timestamp"
+                    }
                 }
                 is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
                     // Извлекаем расширение из оригинального файла, если есть
                     val originalName = content.media.fileName
                     val extension = originalName?.substringAfterLast('.', "")
-                    filename = if (!extension.isNullOrBlank()) {
-                        "document_$timestamp.$extension"
+                    
+                    // Если есть текст, используем его, иначе дату и время
+                    if (!messageText.isNullOrBlank()) {
+                        filename = if (!extension.isNullOrBlank()) {
+                            "$messageText.$extension"
+                        } else {
+                            messageText
+                        }
+                        title = messageText
                     } else {
-                        "document_$timestamp"
+                        filename = if (!extension.isNullOrBlank()) {
+                            "document_$timestamp.$extension"
+                        } else {
+                            "document_$timestamp"
+                        }
+                        title = "Document $timestamp"
                     }
-                    title = "Document $timestamp"
                 }
                 else -> {
-                    filename = "attachment_$timestamp"
-                    title = "Attachment $timestamp"
+                    filename = if (!messageText.isNullOrBlank()) {
+                        messageText
+                    } else {
+                        "attachment_$timestamp"
+                    }
+                    title = messageText ?: "Attachment $timestamp"
                 }
             }
 
