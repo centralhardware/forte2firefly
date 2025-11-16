@@ -5,10 +5,12 @@ import dev.inmo.tgbotapi.extensions.api.bot.getMe
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.buildBehaviourWithLongPolling
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
 import dev.inmo.tgbotapi.types.message.content.MediaContent
+import dev.inmo.tgbotapi.types.message.content.TextContent
 import dev.inmo.tgbotapi.utils.extensions.escapeMarkdownV2Common
 import me.centralhardware.forte2firefly.model.AttachmentRequest
 import me.centralhardware.forte2firefly.model.TransactionRequest
@@ -32,63 +34,43 @@ class TelegramBotHandler(
         replyTo: dev.inmo.tgbotapi.types.message.abstracts.Message
     ) {
         try {
-            logger.info("Processing attachment reply")
-
-            // Пытаемся извлечь ID транзакции из текста сообщения, на которое сделан reply
             val replyText = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
             val textContent = when (replyText) {
                 is dev.inmo.tgbotapi.types.message.content.TextContent -> replyText.text
                 else -> {
-                    logger.warn("Reply message does not contain text")
                     bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
                     return
                 }
             }
 
-            logger.info("Reply message text: $textContent")
-
-            // Извлекаем ID транзакции из текста (ищем строку вида "ID транзакции: 123" или "ID: 123")
             val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
             val matchResult = transactionIdRegex.find(textContent)
             
             if (matchResult == null) {
-                logger.warn("Transaction ID not found in reply message")
                 bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
                 return
             }
 
             val transactionId = matchResult.groupValues[1]
-            logger.info("Extracted transaction ID: $transactionId")
-
             bot.sendMessage(message.chat, "Прикрепляю фото к транзакции #$transactionId...")
 
-            // Получаем информацию о транзакции
             val transaction = fireflyClient.getTransaction(transactionId)
             val journalId = transaction.data.attributes.transactions.first().transactionJournalId
-
-            logger.info("Found transaction journal ID: $journalId")
-
-            // Скачиваем файл
             val fileBytes = bot.downloadFile(message.content)
-            logger.info("File downloaded, size: ${fileBytes.size} bytes")
 
-            // Проверяем наличие текста в сообщении (caption для медиа)
             val messageText = when (val content = message.content) {
                 is dev.inmo.tgbotapi.types.message.content.PhotoContent -> content.text
                 is dev.inmo.tgbotapi.types.message.content.DocumentContent -> content.text
                 else -> null
             }?.trim()
             
-            // Генерируем имя файла на основе даты и времени загрузки (fallback)
             val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
             val timestamp = LocalDateTime.now().format(formatter)
             
-            // Определяем имя файла и расширение в зависимости от типа контента
             val filename: String
             val title: String
             when (val content = message.content) {
                 is dev.inmo.tgbotapi.types.message.content.PhotoContent -> {
-                    // Если есть текст, используем его, иначе дату и время
                     if (!messageText.isNullOrBlank()) {
                         filename = "$messageText.jpg"
                         title = messageText
@@ -98,11 +80,9 @@ class TelegramBotHandler(
                     }
                 }
                 is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
-                    // Извлекаем расширение из оригинального файла, если есть
                     val originalName = content.media.fileName
                     val extension = originalName?.substringAfterLast('.', "")
                     
-                    // Если есть текст, используем его, иначе дату и время
                     if (!messageText.isNullOrBlank()) {
                         filename = if (!extension.isNullOrBlank()) {
                             "$messageText.$extension"
@@ -129,7 +109,6 @@ class TelegramBotHandler(
                 }
             }
 
-            // Создаем attachment
             val attachmentRequest = AttachmentRequest(
                 filename = filename,
                 attachableType = "TransactionJournal",
@@ -139,13 +118,9 @@ class TelegramBotHandler(
             )
 
             val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-            logger.info("Attachment created with ID: ${attachmentResponse.data.id}")
-
-            // Загружаем файл
             val uploadUrl = attachmentResponse.data.attributes.uploadUrl
             if (uploadUrl != null) {
                 fireflyClient.uploadAttachment(uploadUrl, fileBytes)
-                logger.info("File uploaded successfully")
             }
 
             bot.sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId")
@@ -156,6 +131,77 @@ class TelegramBotHandler(
         }
     }
 
+    private suspend fun handleAmountCorrection(
+        message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<TextContent>,
+        replyTo: dev.inmo.tgbotapi.types.message.abstracts.Message
+    ) {
+        try {
+            val newAmountText = message.content.text.trim()
+            val newAmount = newAmountText.toDoubleOrNull()
+
+            if (newAmount == null || newAmount <= 0) {
+                bot.sendMessage(message.chat, "⚠️ Некорректная сумма. Введите положительное число.")
+                return
+            }
+
+            val replyText = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
+            val textContent = when (replyText) {
+                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyText.text
+                else -> {
+                    bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                    return
+                }
+            }
+
+            val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
+            val matchResult = transactionIdRegex.find(textContent)
+
+            if (matchResult == null) {
+                bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+                return
+            }
+
+            val transactionId = matchResult.groupValues[1]
+            bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...")
+
+            val currentTransaction = fireflyClient.getTransaction(transactionId)
+            val currentSplit = currentTransaction.data.attributes.transactions.first()
+
+            val updatedSplit = TransactionSplit(
+                type = currentSplit.type,
+                date = currentSplit.date,
+                amount = newAmount.toString(),
+                description = currentSplit.description,
+                sourceName = currentSplit.sourceName,
+                destinationName = currentSplit.destinationName,
+                currencyCode = currentSplit.currencyCode ?: defaultCurrency,
+                foreignAmount = currentSplit.foreignAmount,
+                foreignCurrencyCode = currentSplit.foreignCurrencyCode,
+                externalId = currentSplit.externalId,
+                notes = currentSplit.notes
+            )
+
+            val updateRequest = TransactionRequest(
+                transactions = listOf(updatedSplit)
+            )
+
+            fireflyClient.updateTransaction(transactionId, updateRequest)
+
+            val successMessage = buildString {
+                appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
+                appendLine()
+                appendLine("💰 Новая сумма: $newAmount")
+                append("📝 ${currentSplit.description}")
+            }
+
+            bot.sendMessage(message.chat, successMessage)
+
+        } catch (e: Exception) {
+            logger.error("Error correcting amount", e)
+            bot.sendMessage(message.chat, "❌ Ошибка при обновлении суммы: ${e.message ?: "Неизвестная ошибка"}")
+        }
+    }
+
     suspend fun start() {
         val botInfo = bot.getMe()
         logger.info("Bot started: @${botInfo.username}")
@@ -163,73 +209,38 @@ class TelegramBotHandler(
         bot.buildBehaviourWithLongPolling {
             onPhoto { message ->
                 try {
-                    val mediaGroupId = message.mediaGroupId?.string
-                    logger.info("Received photo from user ${message.chat.id}, mediaGroupId: $mediaGroupId")
-
-                    // Проверяем, является ли это reply на предыдущее сообщение с ID транзакции
                     val replyTo = message.replyTo
                     if (replyTo != null) {
-                        logger.info("Photo is a reply to message: ${replyTo.messageId}")
                         handleAttachmentReply(message, replyTo)
                         return@onPhoto
                     }
 
-                    // Отправляем подтверждение получения только для первого фото в группе или одиночного фото
-                    // (чтобы не спамить при media group)
-                    if (mediaGroupId == null) {
-                        sendMessage(
-                            message.chat,
-                            "Фото получено, обрабатываю..."
-                        )
+                    if (message.mediaGroupId == null) {
+                        sendMessage(message.chat, "Фото получено, обрабатываю...")
                     }
 
-                    // Получаем самое большое фото из группы
-                    // В tgbotapi content имеет тип PhotoContent с полем mediaGroupId
-                    val photo = message.content
-
-                    // Скачиваем фото напрямую как ByteArray
-                    val photoBytes = bot.downloadFile(photo)
-
-                    logger.info("Photo downloaded, size: ${photoBytes.size} bytes")
-
-                    // Распознаем текст с предобработкой для улучшения качества
+                    val photoBytes = bot.downloadFile(message.content)
                     val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
+                    
                     if (text.isBlank()) {
                         sendMessage(message.chat, "⚠️ Не удалось распознать текст на фото")
                         return@onPhoto
                     }
 
-                    logger.info("OCR result: $text")
-
-                    // Парсим транзакцию
                     val forteTransaction = parser.parseTransaction(text)
                     if (forteTransaction == null) {
-                        sendMessage(
-                            message.chat,
-                            "⚠️ Не удалось распознать данные транзакции\\. Проверьте формат фото\\."
-                                .escapeMarkdownV2Common()
-                        )
+                        sendMessage(message.chat, "⚠️ Не удалось распознать данные транзакции\\. Проверьте формат фото\\."
+                            .escapeMarkdownV2Common())
                         return@onPhoto
                     }
 
-                    // Определяем валюту из транзакции
                     val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
-
-                    // Получаем source account для этой валюты
                     val sourceAccount = currencyAccounts[detectedCurrency]
                         ?: throw RuntimeException("No account configured for currency $detectedCurrency. Available: ${currencyAccounts.keys}")
 
-                    // Foreign currency только если есть transaction amount
                     val foreignAmount = forteTransaction.transactionAmount
                     val foreignCurrency = if (foreignAmount != null) defaultCurrency else null
 
-                    logger.info("Creating transaction: currency=$detectedCurrency, amount=${forteTransaction.amount}, foreign=${foreignCurrency ?: "none"} ${foreignAmount ?: ""}, source=$sourceAccount, destination=${forteTransaction.description}")
-
-                    // Создаем транзакцию в Firefly
-                    // Основная валюта - всегда detectedCurrency (USD/EUR/KZT)
-                    // Foreign currency - MYR (только если есть transaction amount)
-                    // Source - счет валюты (ACCOUNT_USD/EUR/KZT)
-                    // Destination - имя мерчанта (из description)
                     val transactionRequest = TransactionRequest(
                         transactions = listOf(
                             TransactionSplit(
@@ -249,11 +260,8 @@ class TelegramBotHandler(
                     )
 
                     val transactionResponse = fireflyClient.createTransaction(transactionRequest)
-                    logger.info("Transaction created with ID: ${transactionResponse.data.id}")
-
                     val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
 
-                    // Создаем attachment
                     val attachmentRequest = AttachmentRequest(
                         filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
                         attachableType = "TransactionJournal",
@@ -263,16 +271,11 @@ class TelegramBotHandler(
                     )
 
                     val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-                    logger.info("Attachment created with ID: ${attachmentResponse.data.id}")
-
-                    // Загружаем фото
                     val uploadUrl = attachmentResponse.data.attributes.uploadUrl
                     if (uploadUrl != null) {
                         fireflyClient.uploadAttachment(uploadUrl, photoBytes)
-                        logger.info("Photo uploaded successfully")
                     }
 
-                    // Отправляем подтверждение
                     val foreignAmountLine = if (foreignAmount != null) {
                         "💵 В ${defaultCurrency}: ${foreignAmount}"
                     } else {
@@ -293,64 +296,72 @@ class TelegramBotHandler(
                     }
 
                     sendMessage(message.chat, successMessage)
-                    logger.info("Transaction processing completed successfully")
 
                 } catch (e: Exception) {
                     logger.error("Error processing photo", e)
-                    sendMessage(
-                        message.chat,
-                        "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}"
-                    )
+                    sendMessage(message.chat, "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}")
                 }
             }
 
             onDocument { message ->
                 try {
-                    logger.info("Received document from user ${message.chat.id}")
-
-                    // Проверяем, является ли это reply на предыдущее сообщение с ID транзакции
                     val replyTo = message.replyTo
                     if (replyTo != null) {
-                        logger.info("Document is a reply to message: ${replyTo.messageId}")
                         handleAttachmentReply(message, replyTo)
                         return@onDocument
                     }
 
-                    // Если это не reply, отправляем предупреждение
-                    sendMessage(
-                        message.chat,
-                        "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции"
-                    )
+                    sendMessage(message.chat, "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции")
                 } catch (e: Exception) {
                     logger.error("Error processing document", e)
-                    sendMessage(
-                        message.chat,
-                        "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}"
-                    )
+                    sendMessage(message.chat, "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}")
+                }
+            }
+
+            onContentMessage(
+                initialFilter = { it.content is TextContent }
+            ) { message ->
+                try {
+                    val replyTo = message.replyTo
+                    if (replyTo != null) {
+                        @Suppress("UNCHECKED_CAST")
+                        handleAmountCorrection(
+                            message as dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<TextContent>,
+                            replyTo
+                        )
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error processing text message", e)
+                    sendMessage(message.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
                 }
             }
 
             onVisualGallery { gallery ->
-                logger.info("Received visual gallery")
                 val messages = gallery.group
-                logger.info("Gallery has ${messages.size} messages")
+                val totalCount = messages.size
+                var successCount = 0
+                var failedCount = 0
 
-                messages.forEach { msg ->
+                messages.forEachIndexed { index, msg ->
+                    val currentNumber = index + 1
+                    val progress = "$currentNumber/$totalCount"
+                    
                     try {
-                        logger.info("Processing message from gallery")
                         val photoBytes = bot.downloadFile(msg.content)
-                        logger.info("Downloaded photo, size: ${photoBytes.size} bytes")
                         val msgChat = msg.sourceMessage.chat
 
                         val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
                         if (text.isBlank()) {
-                            logger.warn("Empty OCR result")
-                            return@forEach
+                            failedCount++
+                            sendMessage(msgChat, "⚠️ [$progress] Не удалось распознать текст на фото")
+                            return@forEachIndexed
                         }
 
-                        val forteTransaction = parser.parseTransaction(text) ?: run {
-                            logger.warn("Could not parse transaction")
-                            return@forEach
+                        val forteTransaction = parser.parseTransaction(text)
+                        if (forteTransaction == null) {
+                            failedCount++
+                            sendMessage(msgChat, "⚠️ [$progress] Не удалось распознать данные транзакции")
+                            return@forEachIndexed
                         }
 
                         val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
@@ -402,7 +413,7 @@ class TelegramBotHandler(
                         }
 
                         val successMessage = buildString {
-                            appendLine("✅ Транзакция сохранена")
+                            appendLine("✅ [$progress] Транзакция сохранена")
                             appendLine("📝 ${forteTransaction.description}")
                             appendLine("💰 ${forteTransaction.amount} ${detectedCurrency}")
                             if (foreignAmountLine != null) {
@@ -412,12 +423,28 @@ class TelegramBotHandler(
                         }
 
                         sendMessage(msgChat, successMessage)
-                        logger.info("Transaction from gallery processed successfully")
+                        successCount++
 
                     } catch (e: Exception) {
-                        logger.error("Error processing photo from gallery", e)
-                        sendMessage(msg.sourceMessage.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
+                        logger.error("Error processing photo $progress from gallery", e)
+                        failedCount++
+                        sendMessage(msg.sourceMessage.chat, "❌ [$progress] Ошибка: ${e.message ?: "Неизвестная ошибка"}")
                     }
+                }
+
+                val finalMessage = buildString {
+                    appendLine("🏁 Обработка группы фото завершена")
+                    appendLine()
+                    appendLine("📊 Статистика:")
+                    appendLine("✅ Успешно: $successCount")
+                    if (failedCount > 0) {
+                        appendLine("❌ Ошибок: $failedCount")
+                    }
+                    append("📈 Всего: $totalCount")
+                }
+
+                if (messages.isNotEmpty()) {
+                    sendMessage(messages.first().sourceMessage.chat, finalMessage)
                 }
             }
         }.join()

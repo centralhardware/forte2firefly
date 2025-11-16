@@ -45,15 +45,9 @@ class FireflyApiClient(
     }
 
     suspend fun createTransaction(transaction: TransactionRequest): TransactionResponse {
-        val firstTx = transaction.transactions.first()
-        logger.info("Creating transaction: ${firstTx.description}")
-        logger.info("  Source: ${firstTx.sourceName}, Destination: ${firstTx.destinationName}")
-
         val response = client.post("/api/v1/transactions") {
             setBody(transaction)
         }
-
-        logger.info("Transaction created with status: ${response.status}")
 
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
@@ -65,13 +59,9 @@ class FireflyApiClient(
     }
 
     suspend fun createAttachment(attachment: AttachmentRequest): AttachmentResponse {
-        logger.info("Creating attachment for transaction journal: ${attachment.attachableId}")
-
         val response = client.post("/api/v1/attachments") {
             setBody(attachment)
         }
-
-        logger.info("Attachment created with status: ${response.status}")
 
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
@@ -83,14 +73,10 @@ class FireflyApiClient(
     }
 
     suspend fun uploadAttachment(uploadUrl: String, fileBytes: ByteArray) {
-        logger.info("Uploading file to: $uploadUrl, size: ${fileBytes.size} bytes")
-
         val response = client.post(uploadUrl) {
             setBody(fileBytes)
             contentType(ContentType.Application.OctetStream)
         }
-
-        logger.info("File uploaded with status: ${response.status}")
 
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
@@ -100,16 +86,26 @@ class FireflyApiClient(
     }
 
     suspend fun getTransaction(transactionId: String): TransactionResponse {
-        logger.info("Getting transaction by ID: $transactionId")
-
         val response = client.get("/api/v1/transactions/$transactionId")
-
-        logger.info("Transaction retrieved with status: ${response.status}")
 
         if (!response.status.isSuccess()) {
             val errorBody = response.bodyAsText()
             logger.error("Firefly API error (${response.status}): $errorBody")
             throw RuntimeException("Failed to get transaction from Firefly: ${response.status}. Response: $errorBody")
+        }
+
+        return response.body()
+    }
+
+    suspend fun updateTransaction(transactionId: String, transaction: TransactionRequest): TransactionResponse {
+        val response = client.put("/api/v1/transactions/$transactionId") {
+            setBody(transaction)
+        }
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            logger.error("Firefly API error (${response.status}): $errorBody")
+            throw RuntimeException("Failed to update transaction in Firefly: ${response.status}. Response: $errorBody")
         }
 
         return response.body()

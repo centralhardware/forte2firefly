@@ -52,7 +52,12 @@ data class TransactionSplitResponse(
     val amount: String,
     val description: String,
     @SerialName("source_name") val sourceName: String?,
-    @SerialName("destination_name") val destinationName: String?
+    @SerialName("destination_name") val destinationName: String?,
+    @SerialName("currency_code") val currencyCode: String? = null,
+    @SerialName("foreign_amount") val foreignAmount: String? = null,
+    @SerialName("foreign_currency_code") val foreignCurrencyCode: String? = null,
+    @SerialName("external_id") val externalId: String? = null,
+    val notes: String? = null
 )
 
 @Serializable
