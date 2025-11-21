@@ -81,22 +81,27 @@ class TelegramBotHandler(
                 }
                 is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
                     val originalName = content.media.fileName
-                    val extension = originalName?.substringAfterLast('.', "")
                     
-                    if (!messageText.isNullOrBlank()) {
-                        filename = if (!extension.isNullOrBlank()) {
-                            "$messageText.$extension"
-                        } else {
-                            messageText
-                        }
-                        title = messageText
+                    if (originalName != null) {
+                        filename = originalName
+                        title = messageText?.takeIf { it.isNotBlank() } ?: originalName
                     } else {
-                        filename = if (!extension.isNullOrBlank()) {
-                            "document_$timestamp.$extension"
+                        val extension = originalName?.substringAfterLast('.', "")
+                        if (!messageText.isNullOrBlank()) {
+                            filename = if (!extension.isNullOrBlank()) {
+                                "$messageText.$extension"
+                            } else {
+                                messageText
+                            }
+                            title = messageText
                         } else {
-                            "document_$timestamp"
+                            filename = if (!extension.isNullOrBlank()) {
+                                "document_$timestamp.$extension"
+                            } else {
+                                "document_$timestamp"
+                            }
+                            title = "Document $timestamp"
                         }
-                        title = "Document $timestamp"
                     }
                 }
                 else -> {
