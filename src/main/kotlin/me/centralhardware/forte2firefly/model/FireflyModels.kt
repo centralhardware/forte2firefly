@@ -24,7 +24,9 @@ data class TransactionSplit(
     @SerialName("foreign_currency_code") val foreignCurrencyCode: String? = null,
     @SerialName("external_id") val externalId: String? = null,
     val notes: String? = null,
-    val tags: List<String>? = null
+    val tags: List<String>? = null,
+    @SerialName("budget_id") val budgetId: String? = null,
+    @SerialName("budget_name") val budgetName: String? = null
 )
 
 @Serializable
@@ -57,7 +59,10 @@ data class TransactionSplitResponse(
     @SerialName("foreign_amount") val foreignAmount: String? = null,
     @SerialName("foreign_currency_code") val foreignCurrencyCode: String? = null,
     @SerialName("external_id") val externalId: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    val tags: List<String>? = null,
+    @SerialName("budget_id") val budgetId: String? = null,
+    @SerialName("budget_name") val budgetName: String? = null
 )
 
 @Serializable

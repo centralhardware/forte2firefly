@@ -2,17 +2,23 @@ package me.centralhardware.forte2firefly.service
 
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.bot.getMe
+import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.buildBehaviourWithLongPolling
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onMessageDataCallbackQuery
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
+import dev.inmo.tgbotapi.types.buttons.InlineKeyboardButtons.CallbackDataInlineKeyboardButton
+import dev.inmo.tgbotapi.types.buttons.InlineKeyboardMarkup
 import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import dev.inmo.tgbotapi.utils.extensions.escapeMarkdownV2Common
+import dev.inmo.tgbotapi.utils.matrix
 import me.centralhardware.forte2firefly.model.AttachmentRequest
+import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import org.slf4j.LoggerFactory
@@ -28,6 +34,19 @@ class TelegramBotHandler(
     private val currencyAccounts: Map<String, String>
 ) {
     private val logger = LoggerFactory.getLogger(TelegramBotHandler::class.java)
+
+    private fun createBudgetKeyboard(transactionId: String, currentBudget: Budget): InlineKeyboardMarkup {
+        return InlineKeyboardMarkup(
+            keyboard = listOf(
+                listOf(
+                    CallbackDataInlineKeyboardButton(
+                        text = "${currentBudget.emoji} ${currentBudget.budgetName}",
+                        callbackData = "budget:$transactionId:${currentBudget.budgetName}"
+                    )
+                )
+            )
+        )
+    }
 
     private suspend fun <T : MediaContent> handleAttachmentReply(
         message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<T>,
@@ -149,9 +168,9 @@ class TelegramBotHandler(
                 return
             }
 
-            val replyText = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
-            val textContent = when (replyText) {
-                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyText.text
+            val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
+            val textContent = when (replyContent) {
+                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyContent.text
                 else -> {
                     bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
                     return
@@ -171,6 +190,7 @@ class TelegramBotHandler(
 
             val currentTransaction = fireflyClient.getTransaction(transactionId)
             val currentSplit = currentTransaction.data.attributes.transactions.first()
+            val oldAmount = currentSplit.amount
 
             val updatedSplit = TransactionSplit(
                 type = currentSplit.type,
@@ -183,7 +203,10 @@ class TelegramBotHandler(
                 foreignAmount = currentSplit.foreignAmount,
                 foreignCurrencyCode = currentSplit.foreignCurrencyCode,
                 externalId = currentSplit.externalId,
-                notes = currentSplit.notes
+                notes = currentSplit.notes,
+                tags = currentSplit.tags,
+                budgetId = currentSplit.budgetId,
+                budgetName = currentSplit.budgetName
             )
 
             val updateRequest = TransactionRequest(
@@ -191,6 +214,27 @@ class TelegramBotHandler(
             )
 
             fireflyClient.updateTransaction(transactionId, updateRequest)
+
+            if (replyContent is dev.inmo.tgbotapi.types.message.content.TextContent &&
+                replyTo is dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>) {
+                val originalMessage = replyContent.text
+                val updatedMessage = buildString {
+                    append(originalMessage)
+                    appendLine()
+                    appendLine()
+                    append("💰 Сумма изменена: $oldAmount → $newAmount")
+                }
+
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    bot.edit(
+                        replyTo as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
+                        updatedMessage
+                    )
+                } catch (e: Exception) {
+                    logger.warn("Could not edit original message: ${e.message}")
+                }
+            }
 
             val successMessage = buildString {
                 appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
@@ -259,7 +303,8 @@ class TelegramBotHandler(
                                 foreignAmount = foreignAmount,
                                 foreignCurrencyCode = foreignCurrency,
                                 externalId = forteTransaction.transactionNumber,
-                                notes = "Imported from Forte via Telegram Bot"
+                                notes = "Imported from Forte via Telegram Bot",
+                                budgetName = Budget.MAIN.budgetName
                             )
                         )
                     )
@@ -300,7 +345,11 @@ class TelegramBotHandler(
                         append("🔢 ID транзакции: ${transactionResponse.data.id}")
                     }
 
-                    sendMessage(message.chat, successMessage)
+                    sendMessage(
+                        message.chat,
+                        successMessage,
+                        replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN)
+                    )
 
                 } catch (e: Exception) {
                     logger.error("Error processing photo", e)
@@ -389,7 +438,8 @@ class TelegramBotHandler(
                                     foreignAmount = foreignAmount,
                                     foreignCurrencyCode = foreignCurrency,
                                     externalId = forteTransaction.transactionNumber,
-                                    notes = "Imported from Forte via Telegram Bot"
+                                    notes = "Imported from Forte via Telegram Bot",
+                                    budgetName = Budget.MAIN.budgetName
                                 )
                             )
                         )
@@ -427,7 +477,11 @@ class TelegramBotHandler(
                             append("🔢 ID: ${transactionResponse.data.id}")
                         }
 
-                        sendMessage(msgChat, successMessage)
+                        sendMessage(
+                            msgChat,
+                            successMessage,
+                            replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN)
+                        )
                         successCount++
 
                     } catch (e: Exception) {
@@ -450,6 +504,69 @@ class TelegramBotHandler(
 
                 if (messages.isNotEmpty()) {
                     sendMessage(messages.first().sourceMessage.chat, finalMessage)
+                }
+            }
+
+            onMessageDataCallbackQuery(
+                initialFilter = { it.data.startsWith("budget:") }
+            ) { query ->
+                try {
+                    val parts = query.data.split(":")
+                    if (parts.size != 3) {
+                        logger.error("Invalid callback data format: ${query.data}")
+                        return@onMessageDataCallbackQuery
+                    }
+
+                    val transactionId = parts[1]
+                    val currentBudgetName = parts[2]
+                    val currentBudget = Budget.fromNameOrDefault(currentBudgetName)
+                    val newBudget = currentBudget.getNext()
+
+                    val transaction = fireflyClient.getTransaction(transactionId)
+                    val currentSplit = transaction.data.attributes.transactions.first()
+
+                    val updatedSplit = TransactionSplit(
+                        type = currentSplit.type,
+                        date = currentSplit.date,
+                        amount = currentSplit.amount,
+                        description = currentSplit.description,
+                        sourceName = currentSplit.sourceName,
+                        destinationName = currentSplit.destinationName,
+                        currencyCode = currentSplit.currencyCode ?: defaultCurrency,
+                        foreignAmount = currentSplit.foreignAmount,
+                        foreignCurrencyCode = currentSplit.foreignCurrencyCode,
+                        externalId = currentSplit.externalId,
+                        notes = currentSplit.notes,
+                        tags = currentSplit.tags,
+                        budgetName = newBudget.budgetName
+                    )
+
+                    val updateRequest = TransactionRequest(
+                        transactions = listOf(updatedSplit)
+                    )
+
+                    fireflyClient.updateTransaction(transactionId, updateRequest)
+
+                    val queryMessage = query.message
+                    if (queryMessage.content is TextContent) {
+                        val originalMessage = (queryMessage.content as TextContent).text
+                        val updatedMessage = buildString {
+                            append(originalMessage)
+                            appendLine()
+                            appendLine()
+                            append("📊 Бюджет изменен: ${newBudget.emoji} ${newBudget.budgetName}")
+                        }
+
+                        @Suppress("UNCHECKED_CAST")
+                        bot.edit(
+                            queryMessage as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
+                            updatedMessage,
+                            replyMarkup = createBudgetKeyboard(transactionId, newBudget)
+                        )
+                    }
+
+                } catch (e: Exception) {
+                    logger.error("Error handling budget callback", e)
                 }
             }
         }.join()
