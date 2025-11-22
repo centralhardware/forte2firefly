@@ -193,6 +193,14 @@ class TelegramBotHandler(
             val currentSplit = currentTransaction.data.attributes.transactions.first()
             val oldAmount = currentSplit.amount
 
+            val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            val changeLog = "[$timestamp] Сумма изменена: $oldAmount → $newAmount"
+            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
+                changeLog
+            } else {
+                "${currentSplit.notes}\n$changeLog"
+            }
+
             val updatedSplit = TransactionSplit(
                 type = currentSplit.type,
                 date = currentSplit.date,
@@ -204,7 +212,7 @@ class TelegramBotHandler(
                 foreignAmount = currentSplit.foreignAmount,
                 foreignCurrencyCode = currentSplit.foreignCurrencyCode,
                 externalId = currentSplit.externalId,
-                notes = currentSplit.notes,
+                notes = updatedNotes,
                 tags = currentSplit.tags,
                 budgetId = currentSplit.budgetId,
                 budgetName = currentSplit.budgetName,
@@ -409,6 +417,14 @@ class TelegramBotHandler(
                     val currentTransaction = fireflyClient.getTransaction(transactionId)
                     val currentSplit = currentTransaction.data.attributes.transactions.first()
 
+                    val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val changeLog = "[$timestamp] Локация добавлена: ${location.latitude}, ${location.longitude}"
+                    val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
+                        changeLog
+                    } else {
+                        "${currentSplit.notes}\n$changeLog"
+                    }
+
                     val updatedSplit = TransactionSplit(
                         type = currentSplit.type,
                         date = currentSplit.date,
@@ -420,7 +436,7 @@ class TelegramBotHandler(
                         foreignAmount = currentSplit.foreignAmount,
                         foreignCurrencyCode = currentSplit.foreignCurrencyCode,
                         externalId = currentSplit.externalId,
-                        notes = currentSplit.notes,
+                        notes = updatedNotes,
                         tags = currentSplit.tags,
                         budgetId = currentSplit.budgetId,
                         budgetName = currentSplit.budgetName,
@@ -620,6 +636,14 @@ class TelegramBotHandler(
                     val transaction = fireflyClient.getTransaction(transactionId)
                     val currentSplit = transaction.data.attributes.transactions.first()
 
+                    val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val changeLog = "[$timestamp] Бюджет изменен: ${currentBudget.budgetName} → ${newBudget.budgetName}"
+                    val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
+                        changeLog
+                    } else {
+                        "${currentSplit.notes}\n$changeLog"
+                    }
+
                     val updatedSplit = TransactionSplit(
                         type = currentSplit.type,
                         date = currentSplit.date,
@@ -631,7 +655,7 @@ class TelegramBotHandler(
                         foreignAmount = currentSplit.foreignAmount,
                         foreignCurrencyCode = currentSplit.foreignCurrencyCode,
                         externalId = currentSplit.externalId,
-                        notes = currentSplit.notes,
+                        notes = updatedNotes,
                         tags = currentSplit.tags,
                         budgetName = newBudget.budgetName,
                         latitude = currentSplit.latitude,
