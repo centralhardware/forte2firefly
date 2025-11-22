@@ -26,7 +26,10 @@ data class TransactionSplit(
     val notes: String? = null,
     val tags: List<String>? = null,
     @SerialName("budget_id") val budgetId: String? = null,
-    @SerialName("budget_name") val budgetName: String? = null
+    @SerialName("budget_name") val budgetName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerialName("zoom_level") val zoomLevel: Int? = null
 )
 
 @Serializable
@@ -62,7 +65,10 @@ data class TransactionSplitResponse(
     val notes: String? = null,
     val tags: List<String>? = null,
     @SerialName("budget_id") val budgetId: String? = null,
-    @SerialName("budget_name") val budgetName: String? = null
+    @SerialName("budget_name") val budgetName: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerialName("zoom_level") val zoomLevel: Int? = null
 )
 
 @Serializable

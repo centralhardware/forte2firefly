@@ -7,6 +7,7 @@ import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.buildBehaviourWithLongPolling
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
+import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onLocation
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onMessageDataCallbackQuery
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
@@ -206,7 +207,10 @@ class TelegramBotHandler(
                 notes = currentSplit.notes,
                 tags = currentSplit.tags,
                 budgetId = currentSplit.budgetId,
-                budgetName = currentSplit.budgetName
+                budgetName = currentSplit.budgetName,
+                latitude = currentSplit.latitude,
+                longitude = currentSplit.longitude,
+                zoomLevel = currentSplit.zoomLevel
             )
 
             val updateRequest = TransactionRequest(
@@ -369,6 +373,97 @@ class TelegramBotHandler(
                 } catch (e: Exception) {
                     logger.error("Error processing document", e)
                     sendMessage(message.chat, "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}")
+                }
+            }
+
+            onLocation { message ->
+                try {
+                    val replyTo = message.replyTo
+                    if (replyTo == null) {
+                        sendMessage(message.chat, "⚠️ Чтобы добавить локацию к транзакции, отправьте её как reply на сообщение с ID транзакции")
+                        return@onLocation
+                    }
+
+                    val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
+                    val textContent = when (replyContent) {
+                        is dev.inmo.tgbotapi.types.message.content.TextContent -> replyContent.text
+                        else -> {
+                            sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                            return@onLocation
+                        }
+                    }
+
+                    val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
+                    val matchResult = transactionIdRegex.find(textContent)
+
+                    if (matchResult == null) {
+                        sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+                        return@onLocation
+                    }
+
+                    val transactionId = matchResult.groupValues[1]
+                    val location = message.content.location
+
+                    sendMessage(message.chat, "Добавляю локацию к транзакции #$transactionId...")
+
+                    val currentTransaction = fireflyClient.getTransaction(transactionId)
+                    val currentSplit = currentTransaction.data.attributes.transactions.first()
+
+                    val updatedSplit = TransactionSplit(
+                        type = currentSplit.type,
+                        date = currentSplit.date,
+                        amount = currentSplit.amount,
+                        description = currentSplit.description,
+                        sourceName = currentSplit.sourceName,
+                        destinationName = currentSplit.destinationName,
+                        currencyCode = currentSplit.currencyCode ?: defaultCurrency,
+                        foreignAmount = currentSplit.foreignAmount,
+                        foreignCurrencyCode = currentSplit.foreignCurrencyCode,
+                        externalId = currentSplit.externalId,
+                        notes = currentSplit.notes,
+                        tags = currentSplit.tags,
+                        budgetId = currentSplit.budgetId,
+                        budgetName = currentSplit.budgetName,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        zoomLevel = 15
+                    )
+
+                    val updateRequest = TransactionRequest(
+                        transactions = listOf(updatedSplit)
+                    )
+
+                    fireflyClient.updateTransaction(transactionId, updateRequest)
+
+                    if (replyContent is dev.inmo.tgbotapi.types.message.content.TextContent &&
+                        replyTo is dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>) {
+                        val originalMessage = replyContent.text
+                        val updatedMessage = buildString {
+                            append(originalMessage)
+                            appendLine()
+                            appendLine()
+                            append("📍 Локация добавлена: ${location.latitude}, ${location.longitude}")
+                        }
+
+                        try {
+                            @Suppress("UNCHECKED_CAST")
+                            bot.edit(
+                                replyTo as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
+                                updatedMessage
+                            )
+                        } catch (e: Exception) {
+                            logger.warn("Could not edit original message: ${e.message}")
+                        }
+                    }
+
+                    sendMessage(
+                        message.chat,
+                        "✅ Локация успешно добавлена к транзакции #$transactionId\n📍 ${location.latitude}, ${location.longitude}"
+                    )
+
+                } catch (e: Exception) {
+                    logger.error("Error processing location", e)
+                    sendMessage(message.chat, "❌ Ошибка при добавлении локации: ${e.message ?: "Неизвестная ошибка"}")
                 }
             }
 
@@ -538,7 +633,10 @@ class TelegramBotHandler(
                         externalId = currentSplit.externalId,
                         notes = currentSplit.notes,
                         tags = currentSplit.tags,
-                        budgetName = newBudget.budgetName
+                        budgetName = newBudget.budgetName,
+                        latitude = currentSplit.latitude,
+                        longitude = currentSplit.longitude,
+                        zoomLevel = currentSplit.zoomLevel
                     )
 
                     val updateRequest = TransactionRequest(
