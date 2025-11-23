@@ -228,27 +228,6 @@ class TelegramBotHandler(
 
             fireflyClient.updateTransaction(transactionId, updateRequest)
 
-            if (replyContent is dev.inmo.tgbotapi.types.message.content.TextContent &&
-                replyTo is dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>) {
-                val originalMessage = replyContent.text
-                val updatedMessage = buildString {
-                    append(originalMessage)
-                    appendLine()
-                    appendLine()
-                    append("💰 Сумма изменена: $oldAmount → $newAmount")
-                }
-
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    bot.edit(
-                        replyTo as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
-                        updatedMessage
-                    )
-                } catch (e: Exception) {
-                    logger.warn("Could not edit original message: ${e.message}")
-                }
-            }
-
             val successMessage = buildString {
                 appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
                 appendLine()
@@ -452,27 +431,6 @@ class TelegramBotHandler(
 
                     fireflyClient.updateTransaction(transactionId, updateRequest)
 
-                    if (replyContent is dev.inmo.tgbotapi.types.message.content.TextContent &&
-                        replyTo is dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>) {
-                        val originalMessage = replyContent.text
-                        val updatedMessage = buildString {
-                            append(originalMessage)
-                            appendLine()
-                            appendLine()
-                            append("📍 Локация добавлена: ${location.latitude}, ${location.longitude}")
-                        }
-
-                        try {
-                            @Suppress("UNCHECKED_CAST")
-                            bot.edit(
-                                replyTo as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
-                                updatedMessage
-                            )
-                        } catch (e: Exception) {
-                            logger.warn("Could not edit original message: ${e.message}")
-                        }
-                    }
-
                     sendMessage(
                         message.chat,
                         "✅ Локация успешно добавлена к транзакции #$transactionId\n📍 ${location.latitude}, ${location.longitude}"
@@ -674,18 +632,10 @@ class TelegramBotHandler(
 
                     val queryMessage = query.message
                     if (queryMessage.content is TextContent) {
-                        val originalMessage = (queryMessage.content as TextContent).text
-                        val updatedMessage = buildString {
-                            append(originalMessage)
-                            appendLine()
-                            appendLine()
-                            append("📊 Бюджет изменен: ${newBudget.emoji} ${newBudget.budgetName}")
-                        }
-
                         @Suppress("UNCHECKED_CAST")
                         bot.edit(
                             queryMessage as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
-                            updatedMessage,
+                            (queryMessage.content as TextContent).text,
                             replyMarkup = createBudgetKeyboard(transactionId, newBudget)
                         )
                     }
