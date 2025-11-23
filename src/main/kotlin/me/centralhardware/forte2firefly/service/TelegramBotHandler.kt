@@ -15,6 +15,7 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
 import dev.inmo.tgbotapi.types.buttons.InlineKeyboardButtons.CallbackDataInlineKeyboardButton
 import dev.inmo.tgbotapi.types.buttons.InlineKeyboardMarkup
+import dev.inmo.tgbotapi.types.chat.Chat
 import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
 import dev.inmo.tgbotapi.types.message.abstracts.Message
 import dev.inmo.tgbotapi.types.message.content.MediaContent
@@ -50,6 +51,98 @@ class TelegramBotHandler(
                 )
             )
         )
+    }
+
+    private suspend fun processPhotoTransaction(
+        photoBytes: ByteArray,
+        chatId: Chat,
+        progressPrefix: String = ""
+    ): String? {
+        val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
+
+        if (text.isBlank()) {
+            bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото")
+            return null
+        }
+
+        val forteTransaction = parser.parseTransaction(text)
+        if (forteTransaction == null) {
+            bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции")
+            return null
+        }
+
+        val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
+        val sourceAccount = currencyAccounts[detectedCurrency]
+            ?: throw RuntimeException("No account configured for currency $detectedCurrency")
+
+        val foreignAmount = forteTransaction.transactionAmount
+        val foreignCurrency = if (foreignAmount != null) defaultCurrency else null
+
+        val transactionRequest = TransactionRequest(
+            transactions = listOf(
+                TransactionSplit(
+                    type = "withdrawal",
+                    date = parser.convertToFireflyDate(forteTransaction.dateTime),
+                    amount = forteTransaction.amount,
+                    description = forteTransaction.description,
+                    sourceName = sourceAccount,
+                    destinationName = forteTransaction.description,
+                    currencyCode = detectedCurrency,
+                    foreignAmount = foreignAmount,
+                    foreignCurrencyCode = foreignCurrency,
+                    externalId = forteTransaction.transactionNumber,
+                    notes = "Imported from Forte via Telegram Bot",
+                    budgetName = Budget.MAIN.budgetName
+                )
+            )
+        )
+
+        val transactionResponse = fireflyClient.createTransaction(transactionRequest)
+        val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
+            ?: throw RuntimeException("Transaction journal ID is missing")
+
+        val attachmentRequest = AttachmentRequest(
+            filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
+            attachableType = "TransactionJournal",
+            attachableId = journalId,
+            title = "Forte Transaction Photo",
+            notes = "Original transaction photo from Forte"
+        )
+
+        val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
+        val uploadUrl = attachmentResponse.data.attributes.uploadUrl
+        if (uploadUrl != null) {
+            fireflyClient.uploadAttachment(uploadUrl, photoBytes)
+        }
+
+        val foreignAmountLine = if (foreignAmount != null) {
+            "💵 В ${defaultCurrency}: ${foreignAmount}"
+        } else {
+            null
+        }
+
+        val successMessage = buildString {
+            if (progressPrefix.isNotEmpty()) {
+                appendLine("$progressPrefix✅ Транзакция сохранена")
+            } else {
+                appendLine("✅ Транзакция успешно сохранена в Firefly III")
+                appendLine()
+            }
+            appendLine("📝 ${forteTransaction.description}")
+            appendLine("💰 ${forteTransaction.amount} ${detectedCurrency}")
+            if (foreignAmountLine != null) {
+                appendLine(foreignAmountLine)
+            }
+            if (progressPrefix.isEmpty()) {
+                appendLine("🏦 Счёт: ${sourceAccount}")
+                appendLine("📅 Дата: ${forteTransaction.dateTime}")
+            }
+            append("🔢 ID: ${transactionResponse.data.id}")
+        }
+
+        bot.sendMessage(chatId, successMessage, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
+
+        return transactionResponse.data.id
     }
 
     private suspend fun <T : MediaContent> handleAttachmentReply(
@@ -249,88 +342,7 @@ class TelegramBotHandler(
                     }
 
                     val photoBytes = bot.downloadFile(message.content)
-                    val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
-                    
-                    if (text.isBlank()) {
-                        sendMessage(message.chat, "⚠️ Не удалось распознать текст на фото")
-                        return@onPhoto
-                    }
-
-                    val forteTransaction = parser.parseTransaction(text)
-                    if (forteTransaction == null) {
-                        sendMessage(message.chat, "⚠️ Не удалось распознать данные транзакции\\. Проверьте формат фото\\."
-                            .escapeMarkdownV2Common())
-                        return@onPhoto
-                    }
-
-                    val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
-                    val sourceAccount = currencyAccounts[detectedCurrency]
-                        ?: throw RuntimeException("No account configured for currency $detectedCurrency. Available: ${currencyAccounts.keys}")
-
-                    val foreignAmount = forteTransaction.transactionAmount
-                    val foreignCurrency = if (foreignAmount != null) defaultCurrency else null
-
-                    val transactionRequest = TransactionRequest(
-                        transactions = listOf(
-                            TransactionSplit(
-                                type = "withdrawal",
-                                date = parser.convertToFireflyDate(forteTransaction.dateTime),
-                                amount = forteTransaction.amount,
-                                description = forteTransaction.description,
-                                sourceName = sourceAccount,
-                                destinationName = forteTransaction.description,
-                                currencyCode = detectedCurrency,
-                                foreignAmount = foreignAmount,
-                                foreignCurrencyCode = foreignCurrency,
-                                externalId = forteTransaction.transactionNumber,
-                                notes = "Imported from Forte via Telegram Bot",
-                                budgetName = Budget.MAIN.budgetName
-                            )
-                        )
-                    )
-
-                    val transactionResponse = fireflyClient.createTransaction(transactionRequest)
-                    val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
-                        ?: throw RuntimeException("Transaction journal ID is missing")
-
-                    val attachmentRequest = AttachmentRequest(
-                        filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
-                        attachableType = "TransactionJournal",
-                        attachableId = journalId,
-                        title = "Forte Transaction Photo",
-                        notes = "Original transaction photo from Forte"
-                    )
-
-                    val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-                    val uploadUrl = attachmentResponse.data.attributes.uploadUrl
-                    if (uploadUrl != null) {
-                        fireflyClient.uploadAttachment(uploadUrl, photoBytes)
-                    }
-
-                    val foreignAmountLine = if (foreignAmount != null) {
-                        "💵 В ${defaultCurrency}: ${foreignAmount}"
-                    } else {
-                        null
-                    }
-
-                    val successMessage = buildString {
-                        appendLine("✅ Транзакция успешно сохранена в Firefly III")
-                        appendLine()
-                        appendLine("📝 Описание: ${forteTransaction.description}")
-                        appendLine("💰 Сумма: ${forteTransaction.amount} ${detectedCurrency}")
-                        if (foreignAmountLine != null) {
-                            appendLine(foreignAmountLine)
-                        }
-                        appendLine("🏦 Счёт: ${sourceAccount}")
-                        appendLine("📅 Дата: ${forteTransaction.dateTime}")
-                        append("🔢 ID транзакции: ${transactionResponse.data.id}")
-                    }
-
-                    sendMessage(
-                        message.chat,
-                        successMessage,
-                        replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN)
-                    )
+                    processPhotoTransaction(photoBytes, message.chat)
 
                 } catch (e: Exception) {
                     logger.error("Error processing photo", e)
@@ -444,97 +456,23 @@ class TelegramBotHandler(
 
                 messages.forEachIndexed { index, msg ->
                     val currentNumber = index + 1
-                    val progress = "$currentNumber/$totalCount"
-                    
+                    val progress = "[$currentNumber/$totalCount] "
+
                     try {
                         val photoBytes = bot.downloadFile(msg.content)
                         val msgChat = msg.sourceMessage.chat
 
-                        val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
-                        if (text.isBlank()) {
-                            failedCount++
-                            sendMessage(msgChat, "⚠️ [$progress] Не удалось распознать текст на фото")
-                            return@forEachIndexed
-                        }
-
-                        val forteTransaction = parser.parseTransaction(text)
-                        if (forteTransaction == null) {
-                            failedCount++
-                            sendMessage(msgChat, "⚠️ [$progress] Не удалось распознать данные транзакции")
-                            return@forEachIndexed
-                        }
-
-                        val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
-                        val sourceAccount = currencyAccounts[detectedCurrency]
-                            ?: throw RuntimeException("No account configured for currency $detectedCurrency")
-
-                        val foreignAmount = forteTransaction.transactionAmount
-                        val foreignCurrency = if (foreignAmount != null) defaultCurrency else null
-
-                        val transactionRequest = TransactionRequest(
-                            transactions = listOf(
-                                TransactionSplit(
-                                    type = "withdrawal",
-                                    date = parser.convertToFireflyDate(forteTransaction.dateTime),
-                                    amount = forteTransaction.amount,
-                                    description = forteTransaction.description,
-                                    sourceName = sourceAccount,
-                                    destinationName = forteTransaction.description,
-                                    currencyCode = detectedCurrency,
-                                    foreignAmount = foreignAmount,
-                                    foreignCurrencyCode = foreignCurrency,
-                                    externalId = forteTransaction.transactionNumber,
-                                    notes = "Imported from Forte via Telegram Bot",
-                                    budgetName = Budget.MAIN.budgetName
-                                )
-                            )
-                        )
-
-                        val transactionResponse = fireflyClient.createTransaction(transactionRequest)
-                        val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
-                            ?: throw RuntimeException("Transaction journal ID is missing")
-
-                        val attachmentRequest = AttachmentRequest(
-                            filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
-                            attachableType = "TransactionJournal",
-                            attachableId = journalId,
-                            title = "Forte Transaction Photo",
-                            notes = "Original transaction photo from Forte"
-                        )
-
-                        val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-                        val uploadUrl = attachmentResponse.data.attributes.uploadUrl
-                        if (uploadUrl != null) {
-                            fireflyClient.uploadAttachment(uploadUrl, photoBytes)
-                        }
-
-                        val foreignAmountLine = if (foreignAmount != null) {
-                            "💵 В ${defaultCurrency}: ${foreignAmount}"
+                        val transactionId = processPhotoTransaction(photoBytes, msgChat, progress)
+                        if (transactionId != null) {
+                            successCount++
                         } else {
-                            null
+                            failedCount++
                         }
-
-                        val successMessage = buildString {
-                            appendLine("✅ [$progress] Транзакция сохранена")
-                            appendLine("📝 ${forteTransaction.description}")
-                            appendLine("💰 ${forteTransaction.amount} ${detectedCurrency}")
-                            if (foreignAmountLine != null) {
-                                appendLine(foreignAmountLine)
-                            }
-                            append("🔢 ID: ${transactionResponse.data.id}")
-                        }
-
-                        sendMessage(
-                            msgChat,
-                            successMessage,
-                            replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN)
-                        )
-                        successCount++
 
                     } catch (e: Exception) {
                         logger.error("Error processing photo $progress from gallery", e)
                         failedCount++
-                        sendMessage(msg.sourceMessage.chat, "❌ [$progress] Ошибка: ${e.message ?: "Неизвестная ошибка"}")
+                        sendMessage(msg.sourceMessage.chat, "${progress}❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
                     }
                 }
 
