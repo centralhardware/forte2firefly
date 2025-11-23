@@ -90,7 +90,12 @@ class TelegramBotHandler(
                 null
             }
 
-            // Получаем все транзакции за месяц
+            // Получаем потраченную сумму из лимита бюджета (если есть)
+            val totalSpent = budgetLimit?.spent
+                ?.find { it.currencyCode == "USD" }
+                ?.sum?.toDoubleOrNull()?.absoluteValue ?: 0.0
+
+            // Получаем все транзакции за месяц для топ-5 категорий
             val transactions = fireflyClient.getTransactions(start, end)
 
             // Фильтруем по бюджету main
@@ -98,13 +103,6 @@ class TelegramBotHandler(
                 transaction.attributes.transactions.any {
                     it.budgetName == Budget.MAIN.budgetName
                 }
-            }
-
-            // Подсчитываем статистику в USD (основная валюта всегда USD, но проверяем на всякий случай)
-            val totalSpent = mainBudgetTransactions.sumOf { transaction ->
-                transaction.attributes.transactions
-                    .filter { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
-                    .sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
             }
 
             val daysInMonth = yearMonth.lengthOfMonth()
