@@ -101,3 +101,20 @@ data class BudgetLimitAttributes(
 data class TransactionListResponse(
     val data: List<TransactionData>
 )
+
+@Serializable
+data class BudgetListResponse(
+    val data: List<BudgetData>
+)
+
+@Serializable
+data class BudgetData(
+    val id: String,
+    val attributes: BudgetAttributes
+)
+
+@Serializable
+data class BudgetAttributes(
+    val name: String,
+    val active: Boolean? = null
+)

@@ -68,9 +68,27 @@ class TelegramBotHandler(
             val start = startOfMonth.format(dateFormatter)
             val end = endOfMonth.format(dateFormatter)
 
-            // Получаем лимит бюджета
-            val budgetLimits = fireflyClient.getBudgetLimits(Budget.MAIN.budgetName, start, end)
-            val budgetLimit = budgetLimits.data.firstOrNull()?.attributes
+            // Получаем ID бюджета по имени
+            val budgetId = try {
+                val budgets = fireflyClient.getBudgets()
+                budgets.data.find { it.attributes.name == Budget.MAIN.budgetName }?.id
+            } catch (e: Exception) {
+                logger.warn("Failed to fetch budgets: ${e.message}")
+                null
+            }
+
+            // Получаем лимит бюджета (может не существовать)
+            val budgetLimit = if (budgetId != null) {
+                try {
+                    val budgetLimits = fireflyClient.getBudgetLimits(budgetId, start, end)
+                    budgetLimits.data.firstOrNull()?.attributes
+                } catch (e: Exception) {
+                    logger.warn("Budget '${Budget.MAIN.budgetName}' has no limits: ${e.message}")
+                    null
+                }
+            } else {
+                null
+            }
 
             // Получаем все транзакции за месяц
             val transactions = fireflyClient.getTransactions(start, end)
@@ -116,13 +134,20 @@ class TelegramBotHandler(
                 appendLine("📊 Статистика бюджета \"${Budget.MAIN.budgetName}\" за $monthName ${yearMonth.year}")
                 appendLine()
 
-                if (budgetAmount > 0) {
+                if (budgetLimit != null && budgetAmount > 0) {
                     appendLine("💰 Лимит бюджета: ${budgetAmount.format()} MYR")
                     appendLine("📉 Потрачено: ${totalSpent.format()} MYR (${(totalSpent / budgetAmount * 100).format(1)}%)")
                     appendLine("💵 Осталось: ${remaining.format()} MYR")
-                } else {
-                    appendLine("💰 Лимит бюджета: не установлен")
+                } else if (budgetId != null) {
+                    appendLine("⚠️ У бюджета \"${Budget.MAIN.budgetName}\" не установлен лимит на текущий месяц")
                     appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
+                    appendLine()
+                    appendLine("💡 Установите лимит бюджета в Firefly III для полной статистики")
+                } else {
+                    appendLine("⚠️ Бюджет \"${Budget.MAIN.budgetName}\" не найден в Firefly III")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
+                    appendLine()
+                    appendLine("💡 Создайте бюджет \"${Budget.MAIN.budgetName}\" в Firefly III для полной статистики")
                 }
 
                 appendLine()

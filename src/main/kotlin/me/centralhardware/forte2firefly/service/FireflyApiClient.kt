@@ -142,6 +142,18 @@ class FireflyApiClient(
         return response.body()
     }
 
+    suspend fun getBudgets(): BudgetListResponse {
+        val response = client.get("/api/v1/budgets")
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            logger.error("Firefly API error (${response.status}): $errorBody")
+            throw RuntimeException("Failed to get budgets from Firefly: ${response.status}. Response: $errorBody")
+        }
+
+        return response.body()
+    }
+
     fun close() {
         client.close()
     }
