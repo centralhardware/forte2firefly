@@ -94,7 +94,13 @@ data class BudgetLimitAttributes(
     val start: String,
     val end: String,
     val amount: String,
-    val spent: String? = null,
+    val spent: List<BudgetSpent>? = null,
+    @SerialName("currency_code") val currencyCode: String? = null
+)
+
+@Serializable
+data class BudgetSpent(
+    val sum: String,
     @SerialName("currency_code") val currencyCode: String? = null
 )
 

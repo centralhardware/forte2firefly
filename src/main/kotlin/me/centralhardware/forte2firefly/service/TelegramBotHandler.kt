@@ -100,10 +100,10 @@ class TelegramBotHandler(
                 }
             }
 
-            // Подсчитываем статистику
+            // Подсчитываем статистику в USD (основная валюта всегда USD, но проверяем на всякий случай)
             val totalSpent = mainBudgetTransactions.sumOf { transaction ->
                 transaction.attributes.transactions
-                    .filter { it.budgetName == Budget.MAIN.budgetName }
+                    .filter { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
                     .sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
             }
 
@@ -113,10 +113,10 @@ class TelegramBotHandler(
 
             val avgPerDay = if (daysPassed > 0) totalSpent / daysPassed else 0.0
 
-            // Топ 5 категорий (destination_name)
+            // Топ 5 категорий (destination_name) в USD
             val categorySpending = mainBudgetTransactions
                 .flatMap { it.attributes.transactions }
-                .filter { it.budgetName == Budget.MAIN.budgetName }
+                .filter { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
                 .groupBy { it.destinationName ?: "Без категории" }
                 .mapValues { (_, splits) ->
                     val total = splits.sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
@@ -138,16 +138,16 @@ class TelegramBotHandler(
 
                 if (budgetLimit != null && budgetAmount > 0) {
                     appendLine("💰 Лимит бюджета: ${budgetAmount.format()} USD")
-                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR (${(totalSpent / budgetAmount * 100).format(1)}%)")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} USD (${(totalSpent / budgetAmount * 100).format(1)}%)")
                     appendLine("💵 Осталось: ${remaining.format()} USD")
                 } else if (budgetId != null) {
                     appendLine("⚠️ У бюджета \"${Budget.MAIN.budgetName}\" не установлен лимит на текущий месяц")
-                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} USD")
                     appendLine()
                     appendLine("💡 Установите лимит бюджета в Firefly III для полной статистики")
                 } else {
                     appendLine("⚠️ Бюджет \"${Budget.MAIN.budgetName}\" не найден в Firefly III")
-                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} USD")
                     appendLine()
                     appendLine("💡 Создайте бюджет \"${Budget.MAIN.budgetName}\" в Firefly III для полной статистики")
                 }
@@ -156,7 +156,7 @@ class TelegramBotHandler(
                 appendLine("📅 Дней прошло: $daysPassed/$daysInMonth")
                 appendLine("⏳ Дней осталось: $daysRemaining")
                 appendLine()
-                appendLine("📊 Средние траты: ${avgPerDay.format()} MYR/день")
+                appendLine("📊 Средние траты: ${avgPerDay.format()} USD/день")
 
                 if (daysRemaining > 0 && budgetAmount > 0) {
                     appendLine("💡 Доступно на день: ${avgPerDayRemaining.format()} USD/день")
@@ -168,7 +168,7 @@ class TelegramBotHandler(
                     categorySpending.forEachIndexed { index, (category, data) ->
                         val (total, count) = data
                         val categoryAvg = if (count > 0) total / count else 0.0
-                        appendLine("${index + 1}. $category: ${total.format()} MYR (${categoryAvg.format()}/транзакция, $count шт)")
+                        appendLine("${index + 1}. $category: ${total.format()} USD (${categoryAvg.format()}/транзакция, $count шт)")
                     }
                 }
             }
