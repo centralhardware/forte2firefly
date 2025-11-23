@@ -2,6 +2,7 @@ package me.centralhardware.forte2firefly.service
 
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.bot.getMe
+import dev.inmo.tgbotapi.extensions.api.answers.answer
 import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
@@ -669,6 +670,8 @@ class TelegramBotHandler(
 
                     fireflyClient.updateTransaction(transactionId, updateRequest)
 
+                    bot.answer(query, "Бюджет изменен на ${newBudget.budgetName}")
+
                     val queryMessage = query.message
                     if (queryMessage.content is TextContent) {
                         val originalMessage = (queryMessage.content as TextContent).text
@@ -689,6 +692,11 @@ class TelegramBotHandler(
 
                 } catch (e: Exception) {
                     logger.error("Error handling budget callback", e)
+                    try {
+                        bot.answer(query, "Ошибка при изменении бюджета")
+                    } catch (answerError: Exception) {
+                        logger.error("Error answering callback query", answerError)
+                    }
                 }
             }
         }.join()
