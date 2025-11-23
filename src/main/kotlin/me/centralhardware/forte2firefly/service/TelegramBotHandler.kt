@@ -205,24 +205,9 @@ class TelegramBotHandler(
                 "${currentSplit.notes}\n$changeLog"
             }
 
-            val updatedSplit = TransactionSplit(
-                type = currentSplit.type,
-                date = currentSplit.date,
+            val updatedSplit = currentSplit.copy(
                 amount = newAmount.toString(),
-                description = currentSplit.description,
-                sourceName = currentSplit.sourceName,
-                destinationName = currentSplit.destinationName,
-                currencyCode = currentSplit.currencyCode,
-                foreignAmount = currentSplit.foreignAmount,
-                foreignCurrencyCode = currentSplit.foreignCurrencyCode,
-                externalId = currentSplit.externalId,
-                notes = updatedNotes,
-                tags = currentSplit.tags,
-                budgetId = currentSplit.budgetId,
-                budgetName = currentSplit.budgetName,
-                latitude = currentSplit.latitude,
-                longitude = currentSplit.longitude,
-                zoomLevel = currentSplit.zoomLevel
+                notes = updatedNotes
             )
 
             val updateRequest = TransactionRequest(
@@ -409,21 +394,8 @@ class TelegramBotHandler(
                         "${currentSplit.notes}\n$changeLog"
                     }
 
-                    val updatedSplit = TransactionSplit(
-                        type = currentSplit.type,
-                        date = currentSplit.date,
-                        amount = currentSplit.amount,
-                        description = currentSplit.description,
-                        sourceName = currentSplit.sourceName,
-                        destinationName = currentSplit.destinationName,
-                        currencyCode = currentSplit.currencyCode ?: defaultCurrency,
-                        foreignAmount = currentSplit.foreignAmount,
-                        foreignCurrencyCode = currentSplit.foreignCurrencyCode,
-                        externalId = currentSplit.externalId,
+                    val updatedSplit = currentSplit.copy(
                         notes = updatedNotes,
-                        tags = currentSplit.tags,
-                        budgetId = currentSplit.budgetId,
-                        budgetName = currentSplit.budgetName,
                         latitude = location.latitude,
                         longitude = location.longitude,
                         zoomLevel = 15
@@ -608,23 +580,9 @@ class TelegramBotHandler(
                         "${currentSplit.notes}\n$changeLog"
                     }
 
-                    val updatedSplit = TransactionSplit(
-                        type = currentSplit.type,
-                        date = currentSplit.date,
-                        amount = currentSplit.amount,
-                        description = currentSplit.description,
-                        sourceName = currentSplit.sourceName,
-                        destinationName = currentSplit.destinationName,
-                        currencyCode = currentSplit.currencyCode ?: defaultCurrency,
-                        foreignAmount = currentSplit.foreignAmount,
-                        foreignCurrencyCode = currentSplit.foreignCurrencyCode,
-                        externalId = currentSplit.externalId,
+                    val updatedSplit = currentSplit.copy(
                         notes = updatedNotes,
-                        tags = currentSplit.tags,
-                        budgetName = newBudget.budgetName,
-                        latitude = currentSplit.latitude,
-                        longitude = currentSplit.longitude,
-                        zoomLevel = currentSplit.zoomLevel
+                        budgetName = newBudget.budgetName
                     )
 
                     val updateRequest = TransactionRequest(
