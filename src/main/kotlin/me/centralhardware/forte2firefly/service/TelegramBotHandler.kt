@@ -15,6 +15,8 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
 import dev.inmo.tgbotapi.types.buttons.InlineKeyboardButtons.CallbackDataInlineKeyboardButton
 import dev.inmo.tgbotapi.types.buttons.InlineKeyboardMarkup
+import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
+import dev.inmo.tgbotapi.types.message.abstracts.Message
 import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import dev.inmo.tgbotapi.utils.extensions.escapeMarkdownV2Common
@@ -57,7 +59,7 @@ class TelegramBotHandler(
         try {
             val replyText = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
             val textContent = when (replyText) {
-                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyText.text
+                is TextContent -> replyText.text
                 else -> {
                     bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
                     return
@@ -77,6 +79,7 @@ class TelegramBotHandler(
 
             val transaction = fireflyClient.getTransaction(transactionId)
             val journalId = transaction.data.attributes.transactions.first().transactionJournalId
+                ?: throw RuntimeException("Transaction journal ID is missing")
             val fileBytes = bot.downloadFile(message.content)
 
             val messageText = when (val content = message.content) {
@@ -158,8 +161,8 @@ class TelegramBotHandler(
     }
 
     private suspend fun handleAmountCorrection(
-        message: dev.inmo.tgbotapi.types.message.abstracts.CommonMessage<TextContent>,
-        replyTo: dev.inmo.tgbotapi.types.message.abstracts.Message
+        message: CommonMessage<TextContent>,
+        replyTo: Message
     ) {
         try {
             val newAmountText = message.content.text.trim()
@@ -172,7 +175,7 @@ class TelegramBotHandler(
 
             val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
             val textContent = when (replyContent) {
-                is dev.inmo.tgbotapi.types.message.content.TextContent -> replyContent.text
+                is TextContent -> replyContent.text
                 else -> {
                     bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
                     return
@@ -209,7 +212,7 @@ class TelegramBotHandler(
                 description = currentSplit.description,
                 sourceName = currentSplit.sourceName,
                 destinationName = currentSplit.destinationName,
-                currencyCode = currentSplit.currencyCode ?: defaultCurrency,
+                currencyCode = currentSplit.currencyCode,
                 foreignAmount = currentSplit.foreignAmount,
                 foreignCurrencyCode = currentSplit.foreignCurrencyCode,
                 externalId = currentSplit.externalId,
@@ -303,6 +306,7 @@ class TelegramBotHandler(
 
                     val transactionResponse = fireflyClient.createTransaction(transactionRequest)
                     val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
+                        ?: throw RuntimeException("Transaction journal ID is missing")
 
                     val attachmentRequest = AttachmentRequest(
                         filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
@@ -516,6 +520,7 @@ class TelegramBotHandler(
 
                         val transactionResponse = fireflyClient.createTransaction(transactionRequest)
                         val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
+                            ?: throw RuntimeException("Transaction journal ID is missing")
 
                         val attachmentRequest = AttachmentRequest(
                             filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
@@ -635,7 +640,7 @@ class TelegramBotHandler(
                         @Suppress("UNCHECKED_CAST")
                         bot.edit(
                             queryMessage as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
-                            (queryMessage.content as TextContent).text,
+                            queryMessage.content.text,
                             replyMarkup = createBudgetKeyboard(transactionId, newBudget)
                         )
                     }

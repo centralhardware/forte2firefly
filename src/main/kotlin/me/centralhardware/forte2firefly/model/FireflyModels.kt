@@ -13,13 +13,13 @@ data class TransactionRequest(
 
 @Serializable
 data class TransactionSplit(
-    val type: String,  // Required field, no default
+    val type: String,
     val date: String,
     val amount: String,
     val description: String,
     @SerialName("source_name") val sourceName: String? = null,
     @SerialName("destination_name") val destinationName: String? = null,
-    @SerialName("currency_code") val currencyCode: String,  // Required field, no default
+    @SerialName("currency_code") val currencyCode: String? = null,
     @SerialName("foreign_amount") val foreignAmount: String? = null,
     @SerialName("foreign_currency_code") val foreignCurrencyCode: String? = null,
     @SerialName("external_id") val externalId: String? = null,
@@ -29,7 +29,8 @@ data class TransactionSplit(
     @SerialName("budget_name") val budgetName: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    @SerialName("zoom_level") val zoomLevel: Int? = null
+    @SerialName("zoom_level") val zoomLevel: Int? = null,
+    @SerialName("transaction_journal_id") val transactionJournalId: String? = null
 )
 
 @Serializable
@@ -46,29 +47,7 @@ data class TransactionData(
 
 @Serializable
 data class TransactionAttributes(
-    val transactions: List<TransactionSplitResponse>
-)
-
-@Serializable
-data class TransactionSplitResponse(
-    @SerialName("transaction_journal_id") val transactionJournalId: String,
-    val type: String,
-    val date: String,
-    val amount: String,
-    val description: String,
-    @SerialName("source_name") val sourceName: String?,
-    @SerialName("destination_name") val destinationName: String?,
-    @SerialName("currency_code") val currencyCode: String? = null,
-    @SerialName("foreign_amount") val foreignAmount: String? = null,
-    @SerialName("foreign_currency_code") val foreignCurrencyCode: String? = null,
-    @SerialName("external_id") val externalId: String? = null,
-    val notes: String? = null,
-    val tags: List<String>? = null,
-    @SerialName("budget_id") val budgetId: String? = null,
-    @SerialName("budget_name") val budgetName: String? = null,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    @SerialName("zoom_level") val zoomLevel: Int? = null
+    val transactions: List<TransactionSplit>
 )
 
 @Serializable
