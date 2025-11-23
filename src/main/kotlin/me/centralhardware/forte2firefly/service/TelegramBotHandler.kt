@@ -77,11 +77,11 @@ class TelegramBotHandler(
                 null
             }
 
-            // Получаем лимит бюджета (может не существовать)
+            // Получаем лимит бюджета в USD (может не существовать)
             val budgetLimit = if (budgetId != null) {
                 try {
                     val budgetLimits = fireflyClient.getBudgetLimits(budgetId, start, end)
-                    budgetLimits.data.firstOrNull()?.attributes
+                    budgetLimits.data.find { it.attributes.currencyCode == "USD" }?.attributes
                 } catch (e: Exception) {
                     logger.warn("Budget '${Budget.MAIN.budgetName}' has no limits: ${e.message}")
                     null
@@ -119,10 +119,12 @@ class TelegramBotHandler(
                 .filter { it.budgetName == Budget.MAIN.budgetName }
                 .groupBy { it.destinationName ?: "Без категории" }
                 .mapValues { (_, splits) ->
-                    splits.sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
+                    val total = splits.sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
+                    val count = splits.size
+                    total to count
                 }
                 .entries
-                .sortedByDescending { it.value }
+                .sortedByDescending { it.value.first }
                 .take(5)
 
             val budgetAmount = budgetLimit?.amount?.toDoubleOrNull() ?: 0.0
@@ -135,9 +137,9 @@ class TelegramBotHandler(
                 appendLine()
 
                 if (budgetLimit != null && budgetAmount > 0) {
-                    appendLine("💰 Лимит бюджета: ${budgetAmount.format()} MYR")
+                    appendLine("💰 Лимит бюджета: ${budgetAmount.format()} USD")
                     appendLine("📉 Потрачено: ${totalSpent.format()} MYR (${(totalSpent / budgetAmount * 100).format(1)}%)")
-                    appendLine("💵 Осталось: ${remaining.format()} MYR")
+                    appendLine("💵 Осталось: ${remaining.format()} USD")
                 } else if (budgetId != null) {
                     appendLine("⚠️ У бюджета \"${Budget.MAIN.budgetName}\" не установлен лимит на текущий месяц")
                     appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
@@ -157,15 +159,16 @@ class TelegramBotHandler(
                 appendLine("📊 Средние траты: ${avgPerDay.format()} MYR/день")
 
                 if (daysRemaining > 0 && budgetAmount > 0) {
-                    appendLine("💡 Доступно на день: ${avgPerDayRemaining.format()} MYR/день")
+                    appendLine("💡 Доступно на день: ${avgPerDayRemaining.format()} USD/день")
                 }
 
                 if (categorySpending.isNotEmpty()) {
                     appendLine()
                     appendLine("🏆 Топ-5 категорий:")
-                    categorySpending.forEachIndexed { index, (category, amount) ->
-                        val categoryAvg = if (daysPassed > 0) amount / daysPassed else 0.0
-                        appendLine("${index + 1}. $category: ${amount.format()} MYR (${categoryAvg.format()}/день)")
+                    categorySpending.forEachIndexed { index, (category, data) ->
+                        val (total, count) = data
+                        val categoryAvg = if (count > 0) total / count else 0.0
+                        appendLine("${index + 1}. $category: ${total.format()} MYR (${categoryAvg.format()}/транзакция, $count шт)")
                     }
                 }
             }
