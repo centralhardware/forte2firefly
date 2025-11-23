@@ -111,6 +111,37 @@ class FireflyApiClient(
         return response.body()
     }
 
+    suspend fun getBudgetLimits(budgetName: String, start: String, end: String): BudgetLimitResponse {
+        val response = client.get("/api/v1/budgets/$budgetName/limits") {
+            parameter("start", start)
+            parameter("end", end)
+        }
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            logger.error("Firefly API error (${response.status}): $errorBody")
+            throw RuntimeException("Failed to get budget limits from Firefly: ${response.status}. Response: $errorBody")
+        }
+
+        return response.body()
+    }
+
+    suspend fun getTransactions(start: String, end: String, type: String = "withdrawal"): TransactionListResponse {
+        val response = client.get("/api/v1/transactions") {
+            parameter("start", start)
+            parameter("end", end)
+            parameter("type", type)
+        }
+
+        if (!response.status.isSuccess()) {
+            val errorBody = response.bodyAsText()
+            logger.error("Firefly API error (${response.status}): $errorBody")
+            throw RuntimeException("Failed to get transactions from Firefly: ${response.status}. Response: $errorBody")
+        }
+
+        return response.body()
+    }
+
     fun close() {
         client.close()
     }

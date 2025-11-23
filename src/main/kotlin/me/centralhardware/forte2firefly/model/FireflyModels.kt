@@ -77,3 +77,27 @@ data class AttachmentAttributes(
     val filename: String,
     @SerialName("upload_url") val uploadUrl: String? = null
 )
+
+@Serializable
+data class BudgetLimitResponse(
+    val data: List<BudgetLimitData>
+)
+
+@Serializable
+data class BudgetLimitData(
+    val id: String,
+    val attributes: BudgetLimitAttributes
+)
+
+@Serializable
+data class BudgetLimitAttributes(
+    val start: String,
+    val end: String,
+    val amount: String,
+    val spent: String? = null
+)
+
+@Serializable
+data class TransactionListResponse(
+    val data: List<TransactionData>
+)

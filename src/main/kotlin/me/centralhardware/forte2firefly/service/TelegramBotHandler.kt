@@ -27,8 +27,12 @@ import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import kotlin.math.absoluteValue
 
 class TelegramBotHandler(
     private val bot: TelegramBot,
@@ -51,6 +55,106 @@ class TelegramBotHandler(
                 )
             )
         )
+    }
+
+    private suspend fun generateBudgetStats(chatId: Chat) {
+        try {
+            val now = LocalDate.now()
+            val yearMonth = YearMonth.from(now)
+            val startOfMonth = yearMonth.atDay(1)
+            val endOfMonth = yearMonth.atEndOfMonth()
+
+            val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
+            val start = startOfMonth.format(dateFormatter)
+            val end = endOfMonth.format(dateFormatter)
+
+            // Получаем лимит бюджета
+            val budgetLimits = fireflyClient.getBudgetLimits(Budget.MAIN.budgetName, start, end)
+            val budgetLimit = budgetLimits.data.firstOrNull()?.attributes
+
+            // Получаем все транзакции за месяц
+            val transactions = fireflyClient.getTransactions(start, end)
+
+            // Фильтруем по бюджету main
+            val mainBudgetTransactions = transactions.data.filter { transaction ->
+                transaction.attributes.transactions.any {
+                    it.budgetName == Budget.MAIN.budgetName
+                }
+            }
+
+            // Подсчитываем статистику
+            val totalSpent = mainBudgetTransactions.sumOf { transaction ->
+                transaction.attributes.transactions
+                    .filter { it.budgetName == Budget.MAIN.budgetName }
+                    .sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
+            }
+
+            val daysInMonth = yearMonth.lengthOfMonth()
+            val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() + 1
+            val daysRemaining = daysInMonth - daysPassed
+
+            val avgPerDay = if (daysPassed > 0) totalSpent / daysPassed else 0.0
+
+            // Топ 5 категорий (destination_name)
+            val categorySpending = mainBudgetTransactions
+                .flatMap { it.attributes.transactions }
+                .filter { it.budgetName == Budget.MAIN.budgetName }
+                .groupBy { it.destinationName ?: "Без категории" }
+                .mapValues { (_, splits) ->
+                    splits.sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
+                }
+                .entries
+                .sortedByDescending { it.value }
+                .take(5)
+
+            val budgetAmount = budgetLimit?.amount?.toDoubleOrNull() ?: 0.0
+            val remaining = budgetAmount - totalSpent
+            val avgPerDayRemaining = if (daysRemaining > 0) remaining / daysRemaining else 0.0
+
+            val message = buildString {
+                val monthName = yearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }
+                appendLine("📊 Статистика бюджета \"${Budget.MAIN.budgetName}\" за $monthName ${yearMonth.year}")
+                appendLine()
+
+                if (budgetAmount > 0) {
+                    appendLine("💰 Лимит бюджета: ${budgetAmount.format()} MYR")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR (${(totalSpent / budgetAmount * 100).format(1)}%)")
+                    appendLine("💵 Осталось: ${remaining.format()} MYR")
+                } else {
+                    appendLine("💰 Лимит бюджета: не установлен")
+                    appendLine("📉 Потрачено: ${totalSpent.format()} MYR")
+                }
+
+                appendLine()
+                appendLine("📅 Дней прошло: $daysPassed/$daysInMonth")
+                appendLine("⏳ Дней осталось: $daysRemaining")
+                appendLine()
+                appendLine("📊 Средние траты: ${avgPerDay.format()} MYR/день")
+
+                if (daysRemaining > 0 && budgetAmount > 0) {
+                    appendLine("💡 Доступно на день: ${avgPerDayRemaining.format()} MYR/день")
+                }
+
+                if (categorySpending.isNotEmpty()) {
+                    appendLine()
+                    appendLine("🏆 Топ-5 категорий:")
+                    categorySpending.forEachIndexed { index, (category, amount) ->
+                        val categoryAvg = if (daysPassed > 0) amount / daysPassed else 0.0
+                        appendLine("${index + 1}. $category: ${amount.format()} MYR (${categoryAvg.format()}/день)")
+                    }
+                }
+            }
+
+            bot.sendMessage(chatId, message)
+
+        } catch (e: Exception) {
+            logger.error("Error generating budget stats", e)
+            bot.sendMessage(chatId, "❌ Ошибка при получении статистики: ${e.message}")
+        }
+    }
+
+    private fun Double.format(digits: Int = 2): String {
+        return "%.${digits}f".format(this)
     }
 
     private suspend fun processPhotoTransaction(
@@ -434,6 +538,16 @@ class TelegramBotHandler(
                 initialFilter = { it.content is TextContent }
             ) { message ->
                 try {
+                    val text = (message.content as TextContent).text.trim()
+
+                    // Обработка команд
+                    when {
+                        text.startsWith("/stats") || text.startsWith("/budget") -> {
+                            generateBudgetStats(message.chat)
+                            return@onContentMessage
+                        }
+                    }
+
                     val replyTo = message.replyTo
                     if (replyTo != null) {
                         @Suppress("UNCHECKED_CAST")
