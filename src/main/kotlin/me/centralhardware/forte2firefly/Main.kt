@@ -1,18 +1,25 @@
 package me.centralhardware.forte2firefly
 
-import dev.inmo.tgbotapi.bot.ktor.telegramBot
-import kotlinx.coroutines.runBlocking
+import EnvironmentVariableUserAccessChecker
+import dev.inmo.micro_utils.common.Warning
+import dev.inmo.tgbotapi.AppConfig
+import dev.inmo.tgbotapi.longPolling
+import dev.inmo.tgbotapi.utils.RiskFeature
+import me.centralhardware.forte2firefly.handlers.*
 import me.centralhardware.forte2firefly.service.*
 import org.slf4j.LoggerFactory
+import restrictAccess
 
-fun main() {
+@OptIn(Warning::class, RiskFeature::class)
+suspend fun main() {
     val logger = LoggerFactory.getLogger("Main")
     logger.info("=== Application starting ===")
 
     try {
-        runBlocking {
-            startBot(logger)
-        }
+        // Инициализация AppConfig из ktgbotapi-commons
+        AppConfig.init("forte2firefly")
+
+        startBot(logger)
     } catch (e: Exception) {
         logger.error("FATAL ERROR IN MAIN", e)
         e.printStackTrace()
@@ -23,9 +30,6 @@ fun main() {
 suspend fun startBot(logger: org.slf4j.Logger) {
     try {
         // Загрузка конфигурации из переменных окружения
-        val telegramBotToken = System.getenv("TELEGRAM_BOT_TOKEN")
-            ?: throw IllegalArgumentException("TELEGRAM_BOT_TOKEN environment variable is not set")
-
         val fireflyBaseUrl = System.getenv("FIREFLY_BASE_URL")
             ?: throw IllegalArgumentException("FIREFLY_BASE_URL environment variable is not set")
 
@@ -45,10 +49,6 @@ suspend fun startBot(logger: org.slf4j.Logger) {
         logger.info("Firefly URL: $fireflyBaseUrl")
         logger.info("Default currency: $defaultCurrency")
         logger.info("Configured accounts: ${currencyAccounts.keys.joinToString(", ")}")
-
-        logger.info("Creating Telegram bot...")
-        val bot = telegramBot(telegramBotToken)
-        logger.info("Telegram bot created successfully")
 
         logger.info("Creating Firefly API client...")
         val fireflyClient = FireflyApiClient(fireflyBaseUrl, fireflyToken)
@@ -72,27 +72,22 @@ suspend fun startBot(logger: org.slf4j.Logger) {
         }
         logger.info("OCR service created successfully")
 
-        logger.info("Creating bot handler...")
-        val botHandler = TelegramBotHandler(
-            bot = bot,
-            fireflyClient = fireflyClient,
-            parser = parser,
-            ocrService = ocrService,
-            defaultCurrency = defaultCurrency,
-            currencyAccounts = currencyAccounts
-        )
-        logger.info("Bot handler created successfully")
-
         logger.info("Bot initialized successfully, starting polling...")
 
-        // Запуск бота
-        try {
-            botHandler.start()
-        } catch (e: Exception) {
-            logger.error("ERROR DURING BOT POLLING", e)
-            e.printStackTrace()
-            throw e
-        }
+        // Запуск бота через longPolling из ktgbotapi-commons
+        longPolling (
+            middlewares = {
+                addMiddleware { restrictAccess(EnvironmentVariableUserAccessChecker()) }
+            }
+        ) {
+            logger.info("Bot started successfully")
+
+            // Регистрация обработчиков через extension функции
+            registerMediaHandler(fireflyClient, parser, ocrService, defaultCurrency, currencyAccounts)
+            registerLocationHandler(fireflyClient)
+            registerTextHandler(fireflyClient)
+            registerBudgetHandler(fireflyClient)
+        }.second.join()
 
     } catch (e: Exception) {
         logger.error("FATAL ERROR IN START BOT", e)

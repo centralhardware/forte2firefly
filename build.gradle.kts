@@ -10,16 +10,19 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io")
 }
 
 val ktorVersion = "3.0.3"
-val tgbotapiVersion = "24.0.0"
+val tgbotapiVersion = "30.0.2"
 val logbackVersion = "1.5.15"
 val tesseractVersion = "5.12.0"
 
 dependencies {
     // Telegram Bot API
     implementation("dev.inmo:tgbotapi:$tgbotapiVersion")
+    implementation("com.github.centralhardware:ktgbotapi-commons:${tgbotapiVersion}")
+    implementation("com.github.centralhardware.ktgbotapi-middlewars:ktgbotapi-restrict-access-middleware:${tgbotapiVersion}")
 
     // Ktor Client
     implementation("io.ktor:ktor-client-core:$ktorVersion")
