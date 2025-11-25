@@ -4,6 +4,7 @@ import dev.inmo.tgbotapi.extensions.api.answers.answer
 import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onMessageDataCallbackQuery
+import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
@@ -14,9 +15,7 @@ import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("BudgetHandler")
 
-fun BehaviourContext.registerBudgetHandler(
-    fireflyClient: FireflyApiClient
-) {
+fun BehaviourContext.registerBudgetHandler() {
     onMessageDataCallbackQuery(
         initialFilter = { it.data.startsWith("budget:") }
     ) { query ->
@@ -32,7 +31,7 @@ fun BehaviourContext.registerBudgetHandler(
             val currentBudget = Budget.fromNameOrDefault(currentBudgetName)
             val newBudget = currentBudget.getNext()
 
-            val transaction = fireflyClient.getTransaction(transactionId)
+            val transaction = FireflyApiClient.getTransaction(transactionId)
             val currentSplit = transaction.data.attributes.transactions.first()
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -52,7 +51,7 @@ fun BehaviourContext.registerBudgetHandler(
                 transactions = listOf(updatedSplit)
             )
 
-            fireflyClient.updateTransaction(transactionId, updateRequest)
+            FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
             answer(query, "Бюджет изменен на ${newBudget.budgetName}")
 
@@ -60,7 +59,7 @@ fun BehaviourContext.registerBudgetHandler(
             if (queryMessage.content is TextContent) {
                 @Suppress("UNCHECKED_CAST")
                 edit(
-                    queryMessage as dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<TextContent>,
+                    queryMessage as ContentMessage<TextContent>,
                     queryMessage.content.text,
                     replyMarkup = createBudgetKeyboard(transactionId, newBudget)
                 )

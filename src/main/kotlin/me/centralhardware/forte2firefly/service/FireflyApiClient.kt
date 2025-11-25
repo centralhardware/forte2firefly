@@ -14,11 +14,13 @@ import kotlinx.serialization.json.Json
 import me.centralhardware.forte2firefly.model.*
 import org.slf4j.LoggerFactory
 
-class FireflyApiClient(
-    private val baseUrl: String,
-    private val token: String
-) {
+object FireflyApiClient {
     private val logger = LoggerFactory.getLogger(FireflyApiClient::class.java)
+    
+    private val baseUrl = System.getenv("FIREFLY_BASE_URL")
+        ?: throw IllegalArgumentException("FIREFLY_BASE_URL environment variable is not set")
+    private val token = System.getenv("FIREFLY_TOKEN")
+        ?: throw IllegalArgumentException("FIREFLY_TOKEN environment variable is not set")
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
@@ -44,71 +46,68 @@ class FireflyApiClient(
         }
     }
 
+    private suspend inline fun <reified T> HttpResponse.handleResponse(operationName: String): T {
+        if (!status.isSuccess()) {
+            val errorBody = bodyAsText()
+            logger.error("Firefly API error (${status}): $errorBody")
+            throw RuntimeException("Failed to $operationName: ${status}. Response: $errorBody")
+        }
+        return body()
+    }
+
+    private suspend fun HttpResponse.handleResponseUnit(operationName: String) {
+        if (!status.isSuccess()) {
+            val errorBody = bodyAsText()
+            logger.error("Firefly API error (${status}): $errorBody")
+            throw RuntimeException("Failed to $operationName: ${status}. Response: $errorBody")
+        }
+    }
+
     suspend fun createTransaction(transaction: TransactionRequest): TransactionResponse {
         val response = client.post("/api/v1/transactions") {
             setBody(transaction)
         }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to create transaction in Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("create transaction in Firefly")
     }
 
-    suspend fun createAttachment(attachment: AttachmentRequest): AttachmentResponse {
-        val response = client.post("/api/v1/attachments") {
-            setBody(attachment)
-        }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to create attachment in Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
-    }
-
-    suspend fun uploadAttachment(uploadUrl: String, fileBytes: ByteArray) {
-        val response = client.post(uploadUrl) {
-            setBody(fileBytes)
-            contentType(ContentType.Application.OctetStream)
-        }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to upload attachment to Firefly: ${response.status}. Response: $errorBody")
+    suspend fun createAndUploadAttachment(
+        transactionJournalId: String,
+        filename: String,
+        title: String,
+        fileBytes: ByteArray,
+        notes: String? = null
+    ) {
+        val attachmentRequest = AttachmentRequest(
+            filename = filename,
+            attachableType = "TransactionJournal",
+            attachableId = transactionJournalId,
+            title = title,
+            notes = notes
+        )
+        
+        val attachmentResponse = client.post("/api/v1/attachments") {
+            setBody(attachmentRequest)
+        }.handleResponse<AttachmentResponse>("create attachment in Firefly")
+        
+        val uploadUrl = attachmentResponse.data.attributes.uploadUrl
+        if (uploadUrl != null) {
+            client.post(uploadUrl) {
+                setBody(fileBytes)
+                contentType(ContentType.Application.OctetStream)
+            }.handleResponseUnit("upload attachment to Firefly")
         }
     }
 
     suspend fun getTransaction(transactionId: String): TransactionResponse {
         val response = client.get("/api/v1/transactions/$transactionId")
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to get transaction from Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("get transaction from Firefly")
     }
 
     suspend fun updateTransaction(transactionId: String, transaction: TransactionRequest): TransactionResponse {
         val response = client.put("/api/v1/transactions/$transactionId") {
             setBody(transaction)
         }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to update transaction in Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("update transaction in Firefly")
     }
 
     suspend fun getBudgetLimits(budgetName: String, start: String, end: String): BudgetLimitResponse {
@@ -116,14 +115,7 @@ class FireflyApiClient(
             parameter("start", start)
             parameter("end", end)
         }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to get budget limits from Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("get budget limits from Firefly")
     }
 
     suspend fun getTransactions(start: String, end: String, type: String = "withdrawal"): TransactionListResponse {
@@ -132,26 +124,12 @@ class FireflyApiClient(
             parameter("end", end)
             parameter("type", type)
         }
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to get transactions from Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("get transactions from Firefly")
     }
 
     suspend fun getBudgets(): BudgetListResponse {
         val response = client.get("/api/v1/budgets")
-
-        if (!response.status.isSuccess()) {
-            val errorBody = response.bodyAsText()
-            logger.error("Firefly API error (${response.status}): $errorBody")
-            throw RuntimeException("Failed to get budgets from Firefly: ${response.status}. Response: $errorBody")
-        }
-
-        return response.body()
+        return response.handleResponse("get budgets from Firefly")
     }
 
     fun close() {

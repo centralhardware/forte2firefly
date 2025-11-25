@@ -15,19 +15,16 @@ import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("TextHandler")
 
-fun BehaviourContext.registerTextHandler(
-    fireflyClient: FireflyApiClient
-) {
+fun BehaviourContext.registerTextHandler() {
     onContentMessage(
         initialFilter = { it.content is TextContent }
     ) { message ->
         try {
             val text = (message.content as TextContent).text.trim()
 
-            // Обработка команд
             when {
                 text.startsWith("/stats") || text.startsWith("/budget") -> {
-                    generateBudgetStats(message.chat, fireflyClient, bot)
+                    generateBudgetStats(message.chat, bot)
                     return@onContentMessage
                 }
             }
@@ -38,7 +35,6 @@ fun BehaviourContext.registerTextHandler(
                 handleAmountCorrection(
                     message as CommonMessage<TextContent>,
                     replyTo,
-                    fireflyClient,
                     bot
                 )
             }
@@ -52,7 +48,6 @@ fun BehaviourContext.registerTextHandler(
 private suspend fun handleAmountCorrection(
     message: CommonMessage<TextContent>,
     replyTo: Message,
-    fireflyClient: FireflyApiClient,
     bot: TelegramBot
 ) {
     try {
@@ -84,12 +79,12 @@ private suspend fun handleAmountCorrection(
         val transactionId = matchResult.groupValues[1]
         bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...")
 
-        val currentTransaction = fireflyClient.getTransaction(transactionId)
+        val currentTransaction = FireflyApiClient.getTransaction(transactionId)
         val currentSplit = currentTransaction.data.attributes.transactions.first()
         val oldAmount = currentSplit.amount
 
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-        val changeLog = "[$timestamp] Сумма изменена: $oldAmount → $newAmount"
+        val changeLog = "[$timestamp] Сумма изменена: ${oldAmount.formatAmount()} → ${newAmount.toBigDecimal().stripTrailingZeros().toPlainString()}"
         val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
             changeLog
         } else {
@@ -105,7 +100,7 @@ private suspend fun handleAmountCorrection(
             transactions = listOf(updatedSplit)
         )
 
-        fireflyClient.updateTransaction(transactionId, updateRequest)
+        FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
         val successMessage = buildString {
             appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")

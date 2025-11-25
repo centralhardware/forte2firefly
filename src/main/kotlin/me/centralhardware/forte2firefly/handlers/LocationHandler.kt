@@ -12,9 +12,7 @@ import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("LocationHandler")
 
-fun BehaviourContext.registerLocationHandler(
-    fireflyClient: FireflyApiClient
-) {
+fun BehaviourContext.registerLocationHandler() {
     onLocation { message ->
         try {
             val replyTo = message.replyTo
@@ -45,7 +43,7 @@ fun BehaviourContext.registerLocationHandler(
 
             sendMessage(message.chat, "Добавляю локацию к транзакции #$transactionId...")
 
-            val currentTransaction = fireflyClient.getTransaction(transactionId)
+            val currentTransaction = FireflyApiClient.getTransaction(transactionId)
             val currentSplit = currentTransaction.data.attributes.transactions.first()
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
@@ -67,7 +65,7 @@ fun BehaviourContext.registerLocationHandler(
                 transactions = listOf(updatedSplit)
             )
 
-            fireflyClient.updateTransaction(transactionId, updateRequest)
+            FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
             sendMessage(
                 message.chat,

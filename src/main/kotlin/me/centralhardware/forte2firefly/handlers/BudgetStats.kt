@@ -14,7 +14,7 @@ import kotlin.math.absoluteValue
 
 private val logger = LoggerFactory.getLogger("BudgetStats")
 
-suspend fun generateBudgetStats(chatId: Chat, fireflyClient: FireflyApiClient, bot: TelegramBot) {
+suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
     try {
         val now = LocalDate.now()
         val yearMonth = YearMonth.from(now)
@@ -27,7 +27,7 @@ suspend fun generateBudgetStats(chatId: Chat, fireflyClient: FireflyApiClient, b
 
         // Получаем ID бюджета по имени
         val budgetId = try {
-            val budgets = fireflyClient.getBudgets()
+            val budgets = FireflyApiClient.getBudgets()
             budgets.data.find { it.attributes.name == Budget.MAIN.budgetName }?.id
         } catch (e: Exception) {
             logger.warn("Failed to fetch budgets: ${e.message}")
@@ -37,7 +37,7 @@ suspend fun generateBudgetStats(chatId: Chat, fireflyClient: FireflyApiClient, b
         // Получаем лимит бюджета в USD (может не существовать)
         val budgetLimit = if (budgetId != null) {
             try {
-                val budgetLimits = fireflyClient.getBudgetLimits(budgetId, start, end)
+                val budgetLimits = FireflyApiClient.getBudgetLimits(budgetId, start, end)
                 budgetLimits.data.find { it.attributes.currencyCode == "USD" }?.attributes
             } catch (e: Exception) {
                 logger.warn("Budget '${Budget.MAIN.budgetName}' has no limits: ${e.message}")
@@ -53,7 +53,7 @@ suspend fun generateBudgetStats(chatId: Chat, fireflyClient: FireflyApiClient, b
             ?.sum?.toDoubleOrNull()?.absoluteValue ?: 0.0
 
         // Получаем все транзакции за месяц для топ-5 категорий
-        val transactions = fireflyClient.getTransactions(start, end)
+        val transactions = FireflyApiClient.getTransactions(start, end)
 
         // Фильтруем по бюджету main
         val mainBudgetTransactions = transactions.data.filter { transaction ->

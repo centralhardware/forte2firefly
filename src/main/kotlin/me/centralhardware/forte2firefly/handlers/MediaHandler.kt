@@ -21,19 +21,16 @@ private val logger = LoggerFactory.getLogger("MediaHandler")
  * - Если это документ (не reply) - просим отправить как reply
  */
 fun BehaviourContext.registerMediaHandler(
-    fireflyClient: FireflyApiClient,
     parser: TransactionParser,
     ocrService: OCRService,
     defaultCurrency: String,
     currencyAccounts: Map<String, String>
 ) {
-    // Обработка фото
     onPhoto { message ->
         try {
             val replyTo = message.replyTo
             if (replyTo != null) {
-                // Прикрепляем фото к существующей транзакции
-                handleAttachmentReply(message, replyTo, fireflyClient, bot)
+                handleAttachmentReply(message, replyTo)
                 return@onPhoto
             }
 
@@ -46,7 +43,6 @@ fun BehaviourContext.registerMediaHandler(
             processPhotoTransaction(
                 photoBytes = photoBytes,
                 chatId = message.chat,
-                fireflyClient = fireflyClient,
                 parser = parser,
                 ocrService = ocrService,
                 defaultCurrency = defaultCurrency,
@@ -65,8 +61,7 @@ fun BehaviourContext.registerMediaHandler(
         try {
             val replyTo = message.replyTo
             if (replyTo != null) {
-                // Прикрепляем документ к существующей транзакции
-                handleAttachmentReply(message, replyTo, fireflyClient, bot)
+                handleAttachmentReply(message, replyTo)
                 return@onDocument
             }
 
@@ -96,7 +91,6 @@ fun BehaviourContext.registerMediaHandler(
                 val transactionId = processPhotoTransaction(
                     photoBytes = photoBytes,
                     chatId = msgChat,
-                    fireflyClient = fireflyClient,
                     parser = parser,
                     ocrService = ocrService,
                     defaultCurrency = defaultCurrency,

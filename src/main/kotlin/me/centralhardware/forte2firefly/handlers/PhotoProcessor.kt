@@ -3,7 +3,6 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.types.chat.Chat
-import me.centralhardware.forte2firefly.model.AttachmentRequest
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
@@ -17,7 +16,6 @@ private val logger = LoggerFactory.getLogger("PhotoProcessor")
 suspend fun processPhotoTransaction(
     photoBytes: ByteArray,
     chatId: Chat,
-    fireflyClient: FireflyApiClient,
     parser: TransactionParser,
     ocrService: OCRService,
     defaultCurrency: String,
@@ -64,23 +62,17 @@ suspend fun processPhotoTransaction(
         )
     )
 
-    val transactionResponse = fireflyClient.createTransaction(transactionRequest)
+    val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)
     val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
         ?: throw RuntimeException("Transaction journal ID is missing")
 
-    val attachmentRequest = AttachmentRequest(
+    FireflyApiClient.createAndUploadAttachment(
+        transactionJournalId = journalId,
         filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
-        attachableType = "TransactionJournal",
-        attachableId = journalId,
         title = "Forte Transaction Photo",
+        fileBytes = photoBytes,
         notes = "Original transaction photo from Forte"
     )
-
-    val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-    val uploadUrl = attachmentResponse.data.attributes.uploadUrl
-    if (uploadUrl != null) {
-        fireflyClient.uploadAttachment(uploadUrl, photoBytes)
-    }
 
     val foreignAmountLine = if (foreignAmount != null) {
         "💵 В ${defaultCurrency}: ${foreignAmount}"

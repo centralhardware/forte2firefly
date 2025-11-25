@@ -1,13 +1,15 @@
 package me.centralhardware.forte2firefly.handlers
 
-import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
+import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
+import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
 import dev.inmo.tgbotapi.types.message.abstracts.Message
+import dev.inmo.tgbotapi.types.message.content.DocumentContent
 import dev.inmo.tgbotapi.types.message.content.MediaContent
+import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
-import me.centralhardware.forte2firefly.model.AttachmentRequest
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import org.slf4j.LoggerFactory
 import java.time.LocalDateTime
@@ -15,18 +17,16 @@ import java.time.format.DateTimeFormatter
 
 private val logger = LoggerFactory.getLogger("AttachmentHandler")
 
-suspend fun <T : MediaContent> handleAttachmentReply(
+suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
     message: CommonMessage<T>,
-    replyTo: Message,
-    fireflyClient: FireflyApiClient,
-    bot: TelegramBot
+    replyTo: Message
 ) {
     try {
-        val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
+        val replyContent = (replyTo as? ContentMessage<*>)?.content
         val textContent = when (replyContent) {
             is TextContent -> replyContent.text
             else -> {
-                bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
                 return
             }
         }
@@ -35,21 +35,21 @@ suspend fun <T : MediaContent> handleAttachmentReply(
         val matchResult = transactionIdRegex.find(textContent)
         
         if (matchResult == null) {
-            bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+            sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
             return
         }
 
         val transactionId = matchResult.groupValues[1]
-        bot.sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...")
+        sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...")
 
-        val transaction = fireflyClient.getTransaction(transactionId)
+        val transaction = FireflyApiClient.getTransaction(transactionId)
         val journalId = transaction.data.attributes.transactions.first().transactionJournalId
             ?: throw RuntimeException("Transaction journal ID is missing")
-        val fileBytes = bot.downloadFile(message.content)
+        val fileBytes = downloadFile(message.content)
 
         val messageText = when (val content = message.content) {
-            is dev.inmo.tgbotapi.types.message.content.PhotoContent -> content.text
-            is dev.inmo.tgbotapi.types.message.content.DocumentContent -> content.text
+            is PhotoContent -> content.text
+            is DocumentContent -> content.text
             else -> null
         }?.trim()
         
@@ -59,7 +59,7 @@ suspend fun <T : MediaContent> handleAttachmentReply(
         val filename: String
         val title: String
         when (val content = message.content) {
-            is dev.inmo.tgbotapi.types.message.content.PhotoContent -> {
+            is PhotoContent -> {
                 if (!messageText.isNullOrBlank()) {
                     filename = "$messageText.jpg"
                     title = messageText
@@ -68,7 +68,7 @@ suspend fun <T : MediaContent> handleAttachmentReply(
                     title = "Photo $timestamp"
                 }
             }
-            is dev.inmo.tgbotapi.types.message.content.DocumentContent -> {
+            is DocumentContent -> {
                 val originalName = content.media.fileName
                 
                 if (originalName != null) {
@@ -103,24 +103,18 @@ suspend fun <T : MediaContent> handleAttachmentReply(
             }
         }
 
-        val attachmentRequest = AttachmentRequest(
+        FireflyApiClient.createAndUploadAttachment(
+            transactionJournalId = journalId,
             filename = filename,
-            attachableType = "TransactionJournal",
-            attachableId = journalId,
             title = title,
+            fileBytes = fileBytes,
             notes = "Added via reply in Telegram Bot"
         )
 
-        val attachmentResponse = fireflyClient.createAttachment(attachmentRequest)
-        val uploadUrl = attachmentResponse.data.attributes.uploadUrl
-        if (uploadUrl != null) {
-            fireflyClient.uploadAttachment(uploadUrl, fileBytes)
-        }
-
-        bot.sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId")
+        sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId")
 
     } catch (e: Exception) {
         logger.error("Error processing attachment reply", e)
-        bot.sendMessage(message.chat, "❌ Ошибка при прикреплении файла: ${e.message ?: "Неизвестная ошибка"}")
+        sendMessage(message.chat, "❌ Ошибка при прикреплении файла: ${e.message ?: "Неизвестная ошибка"}")
     }
 }

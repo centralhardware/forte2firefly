@@ -20,3 +20,7 @@ fun createBudgetKeyboard(transactionId: String, currentBudget: Budget): InlineKe
 fun Double.format(digits: Int = 2): String {
     return "%.${digits}f".format(this)
 }
+
+fun String.formatAmount(): String {
+    return toDoubleOrNull()?.toBigDecimal()?.stripTrailingZeros()?.toPlainString() ?: this
+}
