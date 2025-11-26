@@ -26,23 +26,15 @@ suspend fun main() {
 }
 
 suspend fun startBot(logger: org.slf4j.Logger) {
-    val defaultCurrency = System.getenv("DEFAULT_CURRENCY") ?: "MYR"
-    val currencyAccounts = mapOf(
-        "USD" to (System.getenv("ACCOUNT_USD") ?: throw IllegalArgumentException("ACCOUNT_USD environment variable is not set")),
-        "EUR" to (System.getenv("ACCOUNT_EUR") ?: throw IllegalArgumentException("ACCOUNT_EUR environment variable is not set")),
-        "KZT" to (System.getenv("ACCOUNT_KZT") ?: throw IllegalArgumentException("ACCOUNT_KZT environment variable is not set"))
-    )
-
     val parser = TransactionParser()
-    val tessdataPath = System.getenv("TESSDATA_PREFIX") ?: "/usr/share/tesseract-ocr/5/tessdata/"
-    val ocrService = OCRService(tessdataPath = tessdataPath)
+    val ocrService = OCRService(tessdataPath = Config.tessdataPrefix)
 
     val longPolling = longPolling (
         middlewares = {
             addMiddleware { restrictAccess(EnvironmentVariableUserAccessChecker()) }
         }
     ) {
-        registerMediaHandler(parser, ocrService, defaultCurrency, currencyAccounts)
+        registerMediaHandler(parser, ocrService)
         registerLocationHandler()
         registerTextHandler()
         registerBudgetHandler()

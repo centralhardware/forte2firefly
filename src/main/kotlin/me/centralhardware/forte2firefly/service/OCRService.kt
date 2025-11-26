@@ -253,42 +253,4 @@ class OCRService(
         return result
     }
 
-    /**
-     * Применяет адаптивный threshold - более качественная бинаризация.
-     * Для каждого пикселя вычисляется локальный threshold на основе соседних пикселей.
-     */
-    private fun applyAdaptiveThreshold(image: BufferedImage, blockSize: Int): BufferedImage {
-        val result = BufferedImage(image.width, image.height, BufferedImage.TYPE_BYTE_BINARY)
-        val halfBlock = blockSize / 2
-
-        for (y in 0 until image.height) {
-            for (x in 0 until image.width) {
-                // Вычисляем средний threshold в локальной области
-                var sum = 0
-                var count = 0
-
-                for (dy in -halfBlock..halfBlock) {
-                    for (dx in -halfBlock..halfBlock) {
-                        val nx = (x + dx).coerceIn(0, image.width - 1)
-                        val ny = (y + dy).coerceIn(0, image.height - 1)
-
-                        val rgb = image.getRGB(nx, ny)
-                        val brightness = ((rgb shr 16) and 0xFF)
-                        sum += brightness
-                        count++
-                    }
-                }
-
-                val localThreshold = sum / count - 10 // -10 для более агрессивной бинаризации
-
-                val rgb = image.getRGB(x, y)
-                val brightness = ((rgb shr 16) and 0xFF)
-
-                val newRgb = if (brightness > localThreshold) 0xFFFFFF else 0x000000
-                result.setRGB(x, y, newRgb)
-            }
-        }
-
-        return result
-    }
 }

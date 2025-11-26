@@ -22,9 +22,7 @@ private val logger = LoggerFactory.getLogger("MediaHandler")
  */
 fun BehaviourContext.registerMediaHandler(
     parser: TransactionParser,
-    ocrService: OCRService,
-    defaultCurrency: String,
-    currencyAccounts: Map<String, String>
+    ocrService: OCRService
 ) {
     onPhoto { message ->
         try {
@@ -45,8 +43,6 @@ fun BehaviourContext.registerMediaHandler(
                 chatId = message.chat,
                 parser = parser,
                 ocrService = ocrService,
-                defaultCurrency = defaultCurrency,
-                currencyAccounts = currencyAccounts,
                 bot = bot
             )
 
@@ -93,8 +89,6 @@ fun BehaviourContext.registerMediaHandler(
                     chatId = msgChat,
                     parser = parser,
                     ocrService = ocrService,
-                    defaultCurrency = defaultCurrency,
-                    currencyAccounts = currencyAccounts,
                     bot = bot,
                     progressPrefix = progress
                 )

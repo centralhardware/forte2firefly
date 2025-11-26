@@ -3,6 +3,7 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.types.chat.Chat
+import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
@@ -18,8 +19,6 @@ suspend fun processPhotoTransaction(
     chatId: Chat,
     parser: TransactionParser,
     ocrService: OCRService,
-    defaultCurrency: String,
-    currencyAccounts: Map<String, String>,
     bot: TelegramBot,
     progressPrefix: String = ""
 ): String? {
@@ -37,11 +36,11 @@ suspend fun processPhotoTransaction(
     }
 
     val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
-    val sourceAccount = currencyAccounts[detectedCurrency]
+    val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
     val foreignAmount = forteTransaction.transactionAmount
-    val foreignCurrency = if (foreignAmount != null) defaultCurrency else null
+    val foreignCurrency = if (foreignAmount != null) Config.defaultCurrency else null
 
     val transactionRequest = TransactionRequest(
         transactions = listOf(
@@ -75,7 +74,7 @@ suspend fun processPhotoTransaction(
     )
 
     val foreignAmountLine = if (foreignAmount != null) {
-        "💵 В ${defaultCurrency}: ${foreignAmount}"
+        "💵 В ${Config.defaultCurrency}: ${foreignAmount}"
     } else {
         null
     }

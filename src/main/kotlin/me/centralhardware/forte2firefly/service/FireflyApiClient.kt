@@ -11,16 +11,12 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.*
 import org.slf4j.LoggerFactory
 
 object FireflyApiClient {
     private val logger = LoggerFactory.getLogger(FireflyApiClient::class.java)
-    
-    private val baseUrl = System.getenv("FIREFLY_BASE_URL")
-        ?: throw IllegalArgumentException("FIREFLY_BASE_URL environment variable is not set")
-    private val token = System.getenv("FIREFLY_TOKEN")
-        ?: throw IllegalArgumentException("FIREFLY_TOKEN environment variable is not set")
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
@@ -36,13 +32,13 @@ object FireflyApiClient {
         }
 
         install(DefaultRequest) {
-            header("Authorization", "Bearer $token")
+            header("Authorization", "Bearer ${Config.fireflyToken}")
             header("Accept", "application/vnd.api+json")
             contentType(ContentType.Application.Json)
         }
 
         defaultRequest {
-            url(baseUrl)
+            url(Config.fireflyBaseUrl)
         }
     }
 
