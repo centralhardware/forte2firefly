@@ -115,12 +115,30 @@ object FireflyApiClient {
     }
 
     suspend fun getTransactions(start: String, end: String, type: String = "withdrawal"): TransactionListResponse {
-        val response = client.get("/api/v1/transactions") {
-            parameter("start", start)
-            parameter("end", end)
-            parameter("type", type)
+        val allTransactions = mutableListOf<TransactionData>()
+        var page = 1
+        var hasMorePages = true
+
+        while (hasMorePages) {
+            val response = client.get("/api/v1/transactions") {
+                parameter("start", start)
+                parameter("end", end)
+                parameter("type", type)
+                parameter("page", page)
+            }
+            val pageResponse = response.handleResponse<TransactionListResponse>("get transactions from Firefly")
+            
+            allTransactions.addAll(pageResponse.data)
+            
+            val totalPages = pageResponse.meta?.pagination?.totalPages ?: 1
+            hasMorePages = page < totalPages
+            page++
+            
+            logger.debug("Fetched page $page/$totalPages with ${pageResponse.data.size} transactions")
         }
-        return response.handleResponse("get transactions from Firefly")
+
+        logger.info("Fetched total ${allTransactions.size} transactions")
+        return TransactionListResponse(data = allTransactions)
     }
 
     suspend fun getBudgets(): BudgetListResponse {

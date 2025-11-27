@@ -106,12 +106,16 @@ data class BudgetSpent(
 
 @Serializable
 data class TransactionListResponse(
-    val data: List<TransactionData>
+    val data: List<TransactionData>,
+    val meta: PaginationMeta? = null,
+    val links: PaginationLinks? = null
 )
 
 @Serializable
 data class BudgetListResponse(
-    val data: List<BudgetData>
+    val data: List<BudgetData>,
+    val meta: PaginationMeta? = null,
+    val links: PaginationLinks? = null
 )
 
 @Serializable
@@ -124,4 +128,27 @@ data class BudgetData(
 data class BudgetAttributes(
     val name: String,
     val active: Boolean? = null
+)
+
+@Serializable
+data class PaginationMeta(
+    val pagination: PaginationInfo
+)
+
+@Serializable
+data class PaginationInfo(
+    val total: Int,
+    val count: Int,
+    @SerialName("per_page") val perPage: Int,
+    @SerialName("current_page") val currentPage: Int,
+    @SerialName("total_pages") val totalPages: Int
+)
+
+@Serializable
+data class PaginationLinks(
+    val self: String,
+    val first: String? = null,
+    val next: String? = null,
+    val prev: String? = null,
+    val last: String? = null
 )
