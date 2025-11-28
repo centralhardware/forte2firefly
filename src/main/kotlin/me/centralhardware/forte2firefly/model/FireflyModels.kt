@@ -27,10 +27,6 @@ data class TransactionSplit(
     val tags: List<String>? = null,
     @SerialName("budget_id") val budgetId: String? = null,
     @SerialName("budget_name") val budgetName: String? = null,
-    val latitude: Double? = null,
-    val longitude: Double? = null,
-    @SerialName("zoom_level") val zoomLevel: Int? = null,
-    @SerialName("update_location") val updateLocation: Boolean? = null,
     @SerialName("transaction_journal_id") val transactionJournalId: String? = null
 )
 

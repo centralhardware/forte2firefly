@@ -35,7 +35,6 @@ suspend fun startBot(logger: org.slf4j.Logger) {
         }
     ) {
         registerMediaHandler(parser, ocrService)
-        registerLocationHandler()
         registerTextHandler()
         registerBudgetHandler()
     }
