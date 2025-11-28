@@ -30,6 +30,7 @@ data class TransactionSplit(
     val latitude: Double? = null,
     val longitude: Double? = null,
     @SerialName("zoom_level") val zoomLevel: Int? = null,
+    @SerialName("update_location") val updateLocation: Boolean? = null,
     @SerialName("transaction_journal_id") val transactionJournalId: String? = null
 )
 

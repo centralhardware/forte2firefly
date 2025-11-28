@@ -58,7 +58,8 @@ fun BehaviourContext.registerLocationHandler() {
                 notes = updatedNotes,
                 latitude = location.latitude,
                 longitude = location.longitude,
-                zoomLevel = 15
+                zoomLevel = 15,
+                updateLocation = true
             )
 
             val updateRequest = TransactionRequest(
