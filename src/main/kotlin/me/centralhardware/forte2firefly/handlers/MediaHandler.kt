@@ -3,6 +3,7 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
@@ -34,7 +35,7 @@ fun BehaviourContext.registerMediaHandler(
 
             // Создаём новую транзакцию из фото через OCR
             if (message.mediaGroupId == null) {
-                sendMessage(message.chat, "Фото получено, обрабатываю...")
+                sendMessage(message.chat, "Фото получено, обрабатываю...", linkPreviewOptions = LinkPreviewOptions.Disabled)
             }
 
             val photoBytes = bot.downloadFile(message.content)
@@ -48,7 +49,7 @@ fun BehaviourContext.registerMediaHandler(
 
         } catch (e: Exception) {
             logger.error("Error processing photo", e)
-            sendMessage(message.chat, "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}")
+            sendMessage(message.chat, "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
 
@@ -62,10 +63,10 @@ fun BehaviourContext.registerMediaHandler(
             }
 
             // Документ без reply - просим отправить как reply
-            sendMessage(message.chat, "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции")
+            sendMessage(message.chat, "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         } catch (e: Exception) {
             logger.error("Error processing document", e)
-            sendMessage(message.chat, "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}")
+            sendMessage(message.chat, "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
 
@@ -101,7 +102,7 @@ fun BehaviourContext.registerMediaHandler(
             } catch (e: Exception) {
                 logger.error("Error processing photo $progress from gallery", e)
                 failedCount++
-                sendMessage(msg.sourceMessage.chat, "${progress}❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
+                sendMessage(msg.sourceMessage.chat, "${progress}❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
             }
         }
 
@@ -117,7 +118,7 @@ fun BehaviourContext.registerMediaHandler(
         }
 
         if (messages.isNotEmpty()) {
-            sendMessage(messages.first().sourceMessage.chat, finalMessage)
+            sendMessage(messages.first().sourceMessage.chat, finalMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
 }

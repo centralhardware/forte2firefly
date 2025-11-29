@@ -3,6 +3,7 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
 import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
 import dev.inmo.tgbotapi.types.message.abstracts.Message
@@ -26,7 +27,7 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         val textContent = when (replyContent) {
             is TextContent -> replyContent.text
             else -> {
-                sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении", linkPreviewOptions = LinkPreviewOptions.Disabled)
                 return
             }
         }
@@ -35,12 +36,12 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         val matchResult = transactionIdRegex.find(textContent)
         
         if (matchResult == null) {
-            sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+            sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.", linkPreviewOptions = LinkPreviewOptions.Disabled)
             return
         }
 
         val transactionId = matchResult.groupValues[1]
-        sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...")
+        sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
         val transaction = FireflyApiClient.getTransaction(transactionId)
         val journalId = transaction.data.attributes.transactions.first().transactionJournalId
@@ -111,10 +112,10 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
             notes = "Added via reply in Telegram Bot"
         )
 
-        sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId")
+        sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
         logger.error("Error processing attachment reply", e)
-        sendMessage(message.chat, "❌ Ошибка при прикреплении файла: ${e.message ?: "Неизвестная ошибка"}")
+        sendMessage(message.chat, "❌ Ошибка при прикреплении файла: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }

@@ -2,6 +2,7 @@ package me.centralhardware.forte2firefly.handlers
 
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
@@ -25,13 +26,13 @@ suspend fun processPhotoTransaction(
     val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
 
     if (text.isBlank()) {
-        bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото")
+        bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
 
     val forteTransaction = parser.parseTransaction(text)
     if (forteTransaction == null) {
-        bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции")
+        bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
 
@@ -98,7 +99,7 @@ suspend fun processPhotoTransaction(
         append("🔢 ID: ${transactionResponse.data.id}")
     }
 
-    bot.sendMessage(chatId, successMessage, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
+    bot.sendMessage(chatId, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
 
     return transactionResponse.data.id
 }

@@ -2,6 +2,7 @@ package me.centralhardware.forte2firefly.handlers
 
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.service.FireflyApiClient
@@ -64,7 +65,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
 
         val daysInMonth = yearMonth.lengthOfMonth()
         val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() + 1
-        val daysRemaining = daysInMonth - daysPassed
+        val daysRemaining = daysInMonth - daysPassed + 1
 
         val budgetAmount = budgetLimit?.amount?.toDoubleOrNull() ?: 0.0
         val avgPerDay = if (daysPassed > 0) totalSpent / daysPassed else 0.0
@@ -143,10 +144,10 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             }
         }
 
-        bot.sendMessage(chatId, message)
+        bot.sendMessage(chatId, message, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
         logger.error("Error generating budget stats", e)
-        bot.sendMessage(chatId, "❌ Ошибка при получении статистики: ${e.message}")
+        bot.sendMessage(chatId, "❌ Ошибка при получении статистики: ${e.message}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }

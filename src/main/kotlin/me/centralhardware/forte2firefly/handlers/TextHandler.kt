@@ -3,6 +3,7 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onContentMessage
 import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
 import dev.inmo.tgbotapi.types.message.abstracts.Message
@@ -40,7 +41,7 @@ fun BehaviourContext.registerTextHandler() {
             }
         } catch (e: Exception) {
             logger.error("Error processing text message", e)
-            sendMessage(message.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}")
+            sendMessage(message.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
 }
@@ -55,7 +56,7 @@ private suspend fun handleAmountCorrection(
         val newAmount = newAmountText.toDoubleOrNull()
 
         if (newAmount == null || newAmount <= 0) {
-            bot.sendMessage(message.chat, "⚠️ Некорректная сумма. Введите положительное число.")
+            bot.sendMessage(message.chat, "⚠️ Некорректная сумма. Введите положительное число.", linkPreviewOptions = LinkPreviewOptions.Disabled)
             return
         }
 
@@ -63,7 +64,7 @@ private suspend fun handleAmountCorrection(
         val textContent = when (replyContent) {
             is TextContent -> replyContent.text
             else -> {
-                bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении")
+                bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении", linkPreviewOptions = LinkPreviewOptions.Disabled)
                 return
             }
         }
@@ -72,12 +73,12 @@ private suspend fun handleAmountCorrection(
         val matchResult = transactionIdRegex.find(textContent)
 
         if (matchResult == null) {
-            bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.")
+            bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.", linkPreviewOptions = LinkPreviewOptions.Disabled)
             return
         }
 
         val transactionId = matchResult.groupValues[1]
-        bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...")
+        bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
         val currentTransaction = FireflyApiClient.getTransaction(transactionId)
         val currentSplit = currentTransaction.data.attributes.transactions.first()
@@ -109,10 +110,10 @@ private suspend fun handleAmountCorrection(
             append("📝 ${currentSplit.description}")
         }
 
-        bot.sendMessage(message.chat, successMessage)
+        bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
         logger.error("Error correcting amount", e)
-        bot.sendMessage(message.chat, "❌ Ошибка при обновлении суммы: ${e.message ?: "Неизвестная ошибка"}")
+        bot.sendMessage(message.chat, "❌ Ошибка при обновлении суммы: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }
