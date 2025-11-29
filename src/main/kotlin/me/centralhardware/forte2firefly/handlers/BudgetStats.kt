@@ -64,11 +64,26 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         }
 
         val daysInMonth = yearMonth.lengthOfMonth()
-        val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() + 1
-        val daysRemaining = daysInMonth - daysPassed + 1
+        val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() // Дни без сегодня
+        val daysRemaining = daysInMonth - daysPassed - 1 // Дни после сегодня
+
+        // Траты за сегодня
+        val todayTransactions = transactions.data.filter { transaction ->
+            transaction.attributes.transactions.any {
+                it.budgetName == Budget.MAIN.budgetName &&
+                it.date?.startsWith(now.format(dateFormatter)) == true
+            }
+        }
+        val todaySpent = todayTransactions
+            .flatMap { it.attributes.transactions }
+            .filter { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
+            .sumOf { it.amount.toDoubleOrNull()?.absoluteValue ?: 0.0 }
 
         val budgetAmount = budgetLimit?.amount?.toDoubleOrNull() ?: 0.0
-        val avgPerDay = if (daysPassed > 0) totalSpent / daysPassed else 0.0
+        
+        // Среднее за прошедшие дни (без сегодня)
+        val spentBeforeToday = totalSpent - todaySpent
+        val avgPerDay = if (daysPassed > 0) spentBeforeToday / daysPassed else 0.0
         val normalPerDay = if (daysInMonth > 0 && budgetAmount > 0) budgetAmount / daysInMonth else 0.0
 
         // Топ 5 категорий (destination_name) в USD
@@ -111,6 +126,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
 
             appendLine()
             appendLine("📅 Дней прошло: $daysPassed/$daysInMonth")
+            appendLine("📆 Сегодня потрачено: ${todaySpent.format()} USD")
             appendLine("⏳ Дней осталось: $daysRemaining")
             appendLine()
 
@@ -121,16 +137,16 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
                 val avgDeviation = avgPerDay - normalPerDay
                 val avgDeviationPercent = if (normalPerDay > 0) (avgDeviation / normalPerDay * 100) else 0.0
                 val avgDeviationSign = if (avgDeviation > 0) "+" else ""
-                appendLine("📊 Средние траты: ${avgPerDay.format()} USD/день (${avgDeviationSign}${avgDeviation.format()} USD, ${avgDeviationSign}${avgDeviationPercent.format(1)}%)")
+                appendLine("📊 Средние траты за прошедшие дни: ${avgPerDay.format()} USD/день (${avgDeviationSign}${avgDeviation.format()} USD, ${avgDeviationSign}${avgDeviationPercent.format(1)}%)")
 
                 if (daysRemaining > 0) {
                     val remainingDeviation = avgPerDayRemaining - normalPerDay
                     val remainingDeviationPercent = if (normalPerDay > 0) (remainingDeviation / normalPerDay * 100) else 0.0
                     val remainingDeviationSign = if (remainingDeviation > 0) "+" else ""
-                    appendLine("💡 Доступно на день: ${avgPerDayRemaining.format()} USD/день (${remainingDeviationSign}${remainingDeviation.format()} USD, ${remainingDeviationSign}${remainingDeviationPercent.format(1)}%)")
+                    appendLine("💡 Доступно на будущие дни: ${avgPerDayRemaining.format()} USD/день (${remainingDeviationSign}${remainingDeviation.format()} USD, ${remainingDeviationSign}${remainingDeviationPercent.format(1)}%)")
                 }
             } else {
-                appendLine("📊 Средние траты: ${avgPerDay.format()} USD/день")
+                appendLine("📊 Средние траты за прошедшие дни: ${avgPerDay.format()} USD/день")
             }
 
             if (categorySpending.isNotEmpty()) {
