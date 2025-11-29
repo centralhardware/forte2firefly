@@ -100,8 +100,15 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             .sortedByDescending { it.value.first }
             .take(5)
 
+        // Потенциальные траты на сегодня (минимум норма)
+        val potentialTodaySpent = if (todaySpent < normalPerDay) normalPerDay else todaySpent
+        
+        // Фактический остаток (для отображения)
         val remaining = budgetAmount - totalSpent
-        val avgPerDayRemaining = if (daysRemaining > 0) remaining / daysRemaining else 0.0
+        
+        // Остаток с учетом потенциальных трат сегодня (для расчета доступного на будущие дни)
+        val remainingAfterToday = budgetAmount - spentBeforeToday - potentialTodaySpent
+        val avgPerDayRemaining = if (daysRemaining > 0) remainingAfterToday / daysRemaining else 0.0
 
         val message = buildString {
             val monthName = yearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }
