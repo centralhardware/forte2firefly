@@ -110,32 +110,30 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         val remainingAfterToday = budgetAmount - spentBeforeToday - potentialTodaySpent
         val avgPerDayRemaining = if (daysRemaining > 0) remainingAfterToday / daysRemaining else 0.0
 
+        // Подсчитываем общее количество транзакций по бюджету main
+        val totalTransactionsCount = mainBudgetTransactions
+            .flatMap { it.attributes.transactions }
+            .count { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
+
         val message = buildString {
             val monthName = yearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }
-            appendLine("📊 Статистика бюджета \"${Budget.MAIN.budgetName}\" за $monthName ${yearMonth.year}")
+            appendLine("${Budget.MAIN.budgetName} $monthName ${yearMonth.year} | ${totalSpent.format()}/${budgetAmount.format()} USD ($totalTransactionsCount шт) | $daysPassed/$daysInMonth дней")
             appendLine()
 
             if (budgetLimit != null && budgetAmount > 0) {
-                appendLine("💰 Лимит бюджета: ${budgetAmount.format()} USD")
-                appendLine("📉 Потрачено: ${totalSpent.format()} USD (${(totalSpent / budgetAmount * 100).format(1)}%)")
                 appendLine("💵 Осталось: ${remaining.format()} USD")
             } else if (budgetId != null) {
                 appendLine("⚠️ У бюджета \"${Budget.MAIN.budgetName}\" не установлен лимит на текущий месяц")
-                appendLine("📉 Потрачено: ${totalSpent.format()} USD")
                 appendLine()
                 appendLine("💡 Установите лимит бюджета в Firefly III для полной статистики")
             } else {
                 appendLine("⚠️ Бюджет \"${Budget.MAIN.budgetName}\" не найден в Firefly III")
-                appendLine("📉 Потрачено: ${totalSpent.format()} USD")
                 appendLine()
                 appendLine("💡 Создайте бюджет \"${Budget.MAIN.budgetName}\" в Firefly III для полной статистики")
             }
 
             appendLine()
-            appendLine("📅 Дней прошло: $daysPassed/$daysInMonth")
             appendLine("📆 Сегодня потрачено: ${todaySpent.format()} USD")
-            appendLine("⏳ Дней осталось: $daysRemaining")
-            appendLine()
 
             if (budgetAmount > 0) {
                 appendLine("📏 Норма: ${normalPerDay.format()} USD/день")
