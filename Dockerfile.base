@@ -1,15 +1,111 @@
-# База: готовый Tesseract 5.5.1 + новые зависимости (как Mac)
-FROM tesseractshadow/tesseract4re:5.5.1
+FROM azul/zulu-openjdk:24
 
-# Устанавливаем Azul OpenJDK 24
-RUN apt-get update && apt-get install -y gnupg wget software-properties-common && \
-    wget -qO - https://repos.azul.com/azul-repo.key | apt-key add - && \
-    apt-add-repository 'deb https://repos.azul.com/zulu/deb stable main' && \
-    apt-get update && apt-get install -y zulu24-jdk && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Базовые зависимости для сборки
+RUN apt-get update && apt-get install -y \
+    autoconf automake libtool pkg-config cmake \
+    g++ make wget git \
+    zlib1g-dev lzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Корректный путь для tessdata
-ENV TESSDATA_PREFIX=/usr/share/tessdata
 
-# Проверка сборки
-RUN tesseract --version && java --version
+############################################################
+# 1. libjpeg-turbo 3.1.2
+############################################################
+RUN wget https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/3.1.2.tar.gz \
+ && tar -xzf 3.1.2.tar.gz \
+ && cd libjpeg-turbo-3.1.2 \
+ && cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr/local . \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 2. libpng 1.6.51
+############################################################
+RUN wget https://download.sourceforge.net/libpng/libpng-1.6.51.tar.gz \
+ && tar -xzf libpng-1.6.51.tar.gz \
+ && cd libpng-1.6.51 \
+ && ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 3. libtiff 4.7.1
+############################################################
+RUN wget https://download.osgeo.org/libtiff/tiff-4.7.1.tar.gz \
+ && tar -xzf tiff-4.7.1.tar.gz \
+ && cd tiff-4.7.1 \
+ && ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 4. libwebp 1.6.0
+############################################################
+RUN wget https://github.com/webmproject/libwebp/archive/refs/tags/v1.6.0.tar.gz \
+ && tar -xzf v1.6.0.tar.gz \
+ && cd libwebp-1.6.0 \
+ && ./autogen.sh \
+ && ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 5. openjpeg 2.5.4
+############################################################
+RUN wget https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.4.tar.gz \
+ && tar -xzf v2.5.4.tar.gz \
+ && cd openjpeg-2.5.4 \
+ && cmake -DCMAKE_INSTALL_PREFIX=/usr/local . \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 6. Leptonica 1.86.0
+############################################################
+RUN wget https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.86.0.tar.gz \
+ && tar -xzf 1.86.0.tar.gz \
+ && cd leptonica-1.86.0 \
+ && ./autogen.sh \
+ && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure --prefix=/usr/local \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 7. Tesseract 5.5.1
+############################################################
+RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
+ && tar -xzf 5.5.1.tar.gz \
+ && cd tesseract-5.5.1 \
+ && ./autogen.sh \
+ && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure --prefix=/usr/local --disable-openmp \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+############################################################
+# 8. ENG language model
+############################################################
+RUN mkdir -p /usr/local/share/tessdata \
+ && wget https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata \
+    -O /usr/local/share/tessdata/eng.traineddata
+
+ENV TESSDATA_PREFIX=/usr/local/share/tessdata
+
+
+############################################################
+# 9. Verification
+############################################################
+RUN tesseract --version && tesseract --list-langs
