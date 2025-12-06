@@ -1,15 +1,17 @@
 FROM azul/zulu-openjdk:24
 
+# Устанавливаем зависимости для сборки
 RUN apt-get update && apt-get install -y \
     autoconf automake libtool \
     pkg-config g++ make wget \
     libpng-dev libtiff-dev zlib1g-dev libjpeg-dev \
-    libwebp-dev libopenjp2-7-dev libarchive-dev libleptonica-dev
+    libwebp-dev libopenjp2-7-dev libarchive-dev libleptonica-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Удаляем старый tesseract, если он предустановлен
+# Удаляем старый tesseract, если он есть
 RUN rm -f /usr/bin/tesseract || true
 
-# Компиляция Tesseract 5.5.1
+# Сборка Tesseract 5.5.1
 RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
  && tar -xzf 5.5.1.tar.gz \
  && cd tesseract-5.5.1 \
@@ -19,4 +21,13 @@ RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
  && make install \
  && ldconfig
 
-RUN tesseract --version
+# Устанавливаем языковые модели
+RUN mkdir -p /usr/local/share/tessdata && \
+    wget https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata \
+        -O /usr/local/share/tessdata/eng.traineddata
+
+# Правильный путь к tessdata (для сборки из исходников)
+ENV TESSDATA_PREFIX=/usr/local/share/tessdata
+
+# Проверка версии + языков
+RUN tesseract --version && tesseract --list-langs
