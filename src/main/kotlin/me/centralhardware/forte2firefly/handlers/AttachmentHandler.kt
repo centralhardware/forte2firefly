@@ -22,8 +22,7 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
     replyTo: Message
 ) {
     try {
-        val replyContent = (replyTo as? ContentMessage<*>)?.content
-        val textContent = when (replyContent) {
+        val textContent = when (val replyContent = (replyTo as? ContentMessage<*>)?.content) {
             is TextContent -> replyContent.text
             else -> {
                 sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении", linkPreviewOptions = LinkPreviewOptions.Disabled)
@@ -70,25 +69,16 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
             }
             is DocumentContent -> {
                 val originalName = content.media.fileName
-                
+
                 if (originalName != null) {
                     filename = originalName
                     title = messageText?.takeIf { it.isNotBlank() } ?: originalName
                 } else {
-                    val extension = originalName?.substringAfterLast('.', "")
                     if (!messageText.isNullOrBlank()) {
-                        filename = if (!extension.isNullOrBlank()) {
-                            "$messageText.$extension"
-                        } else {
-                            messageText
-                        }
+                        filename = messageText
                         title = messageText
                     } else {
-                        filename = if (!extension.isNullOrBlank()) {
-                            "document_$timestamp.$extension"
-                        } else {
-                            "document_$timestamp"
-                        }
+                        filename = "document_$timestamp"
                         title = "Document $timestamp"
                     }
                 }

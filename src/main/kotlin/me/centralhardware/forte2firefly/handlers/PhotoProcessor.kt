@@ -72,7 +72,7 @@ suspend fun processPhotoTransaction(
     )
 
     val foreignAmountLine = if (foreignAmount != null) {
-        "💵 В ${Config.defaultCurrency}: ${foreignAmount}"
+        "💵 В ${Config.defaultCurrency}: $foreignAmount"
     } else {
         null
     }
@@ -85,12 +85,12 @@ suspend fun processPhotoTransaction(
             appendLine()
         }
         appendLine("📝 ${forteTransaction.description}")
-        appendLine("💰 ${forteTransaction.amount} ${detectedCurrency}")
+        appendLine("💰 ${forteTransaction.amount} $detectedCurrency")
         if (foreignAmountLine != null) {
             appendLine(foreignAmountLine)
         }
         if (progressPrefix.isEmpty()) {
-            appendLine("🏦 Счёт: ${sourceAccount}")
+            appendLine("🏦 Счёт: $sourceAccount")
             appendLine("📅 Дата: ${forteTransaction.dateTime}")
         }
         append("🔢 ID: ${transactionResponse.data.id}")

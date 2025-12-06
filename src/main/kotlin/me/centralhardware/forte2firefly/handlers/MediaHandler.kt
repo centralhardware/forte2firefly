@@ -7,7 +7,6 @@ import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
-import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 import dev.inmo.kslog.common.KSLog

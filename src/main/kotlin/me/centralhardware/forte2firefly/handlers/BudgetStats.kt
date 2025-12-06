@@ -65,7 +65,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         val todayTransactions = transactions.data.filter { transaction ->
             transaction.attributes.transactions.any {
                 it.budgetName == Budget.MAIN.budgetName &&
-                it.date?.startsWith(now.format(dateFormatter)) == true
+                it.date.startsWith(now.format(dateFormatter))
             }
         }
         val todaySpent = todayTransactions
