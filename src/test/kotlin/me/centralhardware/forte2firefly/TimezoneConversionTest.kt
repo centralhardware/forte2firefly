@@ -10,69 +10,71 @@ import kotlin.test.assertEquals
 class TimezoneConversionTest {
 
     @Test
-    fun `convert Almaty time to UTC`() {
+    fun `convert Almaty time to UTC plus 1 hour for Firefly`() {
         // Создаем ZonedDateTime для Алматы: 09 november 2025 15:37:39 (UTC+5)
         val almatyTime = ZonedDateTime.of(
             LocalDateTime.of(2025, 11, 9, 15, 37, 39),
             ZoneId.of("Asia/Almaty")
         )
 
-        // Ожидаемое время в UTC: -5 часов
-        val expectedUtcTime = "2025-11-09T10:37:39"
+        // UTC время: 15:37 - 5 часов = 10:37
+        // Плюс 1 час для компенсации: 10:37 + 1 = 11:37
+        val expectedTime = "2025-11-09T11:37:39"
 
         val result = TransactionParser.convertToFireflyDate(almatyTime)
 
-        assertEquals(expectedUtcTime, result,
-            "Should convert from Almaty (UTC+5) to UTC (-5 hours)")
+        assertEquals(expectedTime, result,
+            "Should convert to UTC and add 1 hour for Firefly adjustment")
     }
 
     @Test
-    fun `convert Almaty time near midnight to UTC`() {
-        // 23:00 в Алматы должно стать 18:00 того же дня в UTC
+    fun `convert Almaty time near midnight to UTC plus 1 hour`() {
+        // 23:00 в Алматы - 5 часов = 18:00 UTC
+        // Плюс 1 час: 18:00 + 1 = 19:00
         val almatyTime = ZonedDateTime.of(
             LocalDateTime.of(2025, 11, 9, 23, 0, 0),
             ZoneId.of("Asia/Almaty")
         )
 
-        // -5 часов = 18:00 того же дня
-        val expectedUtcTime = "2025-11-09T18:00:00"
+        val expectedTime = "2025-11-09T19:00:00"
 
         val result = TransactionParser.convertToFireflyDate(almatyTime)
 
-        assertEquals(expectedUtcTime, result,
-            "Should correctly subtract 5 hours for late evening time")
+        assertEquals(expectedTime, result,
+            "Should convert to UTC and add 1 hour")
     }
 
     @Test
-    fun `convert Almaty time early morning to UTC with day change`() {
-        // 01:00 в Алматы = 20:00 предыдущего дня в UTC
+    fun `convert Almaty time early morning to UTC plus 1 hour with day change`() {
+        // 01:00 в Алматы - 5 часов = 20:00 предыдущего дня UTC
+        // Плюс 1 час: 20:00 + 1 = 21:00
         val almatyTime = ZonedDateTime.of(
             LocalDateTime.of(2025, 11, 9, 1, 0, 0),
             ZoneId.of("Asia/Almaty")
         )
 
-        // -5 часов переводит на предыдущий день
-        val expectedUtcTime = "2025-11-08T20:00:00"
+        val expectedTime = "2025-11-08T21:00:00"
 
         val result = TransactionParser.convertToFireflyDate(almatyTime)
 
-        assertEquals(expectedUtcTime, result,
-            "Should handle day change when converting early morning to UTC")
+        assertEquals(expectedTime, result,
+            "Should handle day change and add 1 hour to UTC")
     }
 
     @Test
-    fun `convert Almaty time at noon to UTC`() {
-        // 12:00 в Алматы = 07:00 в UTC
+    fun `convert Almaty time at noon to UTC plus 1 hour`() {
+        // 12:00 в Алматы - 5 часов = 07:00 UTC
+        // Плюс 1 час: 07:00 + 1 = 08:00
         val almatyTime = ZonedDateTime.of(
             LocalDateTime.of(2024, 12, 15, 12, 0, 0),
             ZoneId.of("Asia/Almaty")
         )
 
-        val expectedUtcTime = "2024-12-15T07:00:00"
+        val expectedTime = "2024-12-15T08:00:00"
 
         val result = TransactionParser.convertToFireflyDate(almatyTime)
 
-        assertEquals(expectedUtcTime, result,
-            "Should correctly subtract 5 hours for noon time")
+        assertEquals(expectedTime, result,
+            "Should convert to UTC and add 1 hour")
     }
 }
