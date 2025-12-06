@@ -1,16 +1,4 @@
-FROM eclipse-temurin:24-jre
+FROM azul/zulu-openjdk:24
 
-# Install Tesseract OCR from standard repos
-RUN apt-get update && \
-    apt-get install -y \
-        tesseract-ocr \
-        tesseract-ocr-eng && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Verify installation
+RUN apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-eng
 RUN tesseract --version
-
-# Set Tesseract data directory
-ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata/
-ENV OMP_THREAD_LIMIT=1
