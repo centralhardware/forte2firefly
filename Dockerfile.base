@@ -1,5 +1,5 @@
-# Официальный образ Tesseract 5.5.1 c современными библиотеками
-FROM ghcr.io/tesseract-ocr/tesseract:5.5.1
+# База: готовый Tesseract 5.5.1 + новые зависимости (как Mac)
+FROM tesseractshadow/tesseract4re:5.5.1
 
 # Устанавливаем Azul OpenJDK 24
 RUN apt-get update && apt-get install -y gnupg wget software-properties-common && \
@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y gnupg wget software-properties-common &
     apt-get update && apt-get install -y zulu24-jdk && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Убедимся, что используем правильный TESSDATA_PREFIX
+# Корректный путь для tessdata
 ENV TESSDATA_PREFIX=/usr/share/tessdata
 
-# Проверка
+# Проверка сборки
 RUN tesseract --version && java --version
