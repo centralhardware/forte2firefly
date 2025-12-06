@@ -32,7 +32,7 @@ fun BehaviourContext.registerTextHandler() {
             val replyTo = message.replyTo
             if (replyTo != null) {
                 @Suppress("UNCHECKED_CAST")
-                handleAmountCorrection(
+                handleTransactionUpdate(
                     message as CommonMessage<TextContent>,
                     replyTo,
                     bot
@@ -45,19 +45,14 @@ fun BehaviourContext.registerTextHandler() {
     }
 }
 
-private suspend fun handleAmountCorrection(
+private suspend fun handleTransactionUpdate(
     message: CommonMessage<TextContent>,
     replyTo: Message,
     bot: TelegramBot
 ) {
     try {
-        val newAmountText = message.content.text.trim()
-        val newAmount = newAmountText.toDoubleOrNull()
-
-        if (newAmount == null || newAmount <= 0) {
-            bot.sendMessage(message.chat, "⚠️ Некорректная сумма. Введите положительное число.", linkPreviewOptions = LinkPreviewOptions.Disabled)
-            return
-        }
+        val newText = message.content.text.trim()
+        val newAmount = newText.toDoubleOrNull()
 
         val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
         val textContent = when (replyContent) {
@@ -77,42 +72,83 @@ private suspend fun handleAmountCorrection(
         }
 
         val transactionId = matchResult.groupValues[1]
-        bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
         val currentTransaction = FireflyApiClient.getTransaction(transactionId)
         val currentSplit = currentTransaction.data.attributes.transactions.first()
-        val oldAmount = currentSplit.amount
-
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-        val changeLog = "[$timestamp] Сумма изменена: ${oldAmount.formatAmount()} → ${newAmount.toBigDecimal().stripTrailingZeros().toPlainString()}"
-        val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
-            changeLog
+
+        // Determine if this is an amount update or description update
+        if (newAmount != null && newAmount > 0) {
+            // Update amount
+            bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
+
+            val oldAmount = currentSplit.amount
+            val changeLog = "[$timestamp] Сумма изменена: ${oldAmount.formatAmount()} → ${newAmount.toBigDecimal().stripTrailingZeros().toPlainString()}"
+            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
+                changeLog
+            } else {
+                "${currentSplit.notes}\n$changeLog"
+            }
+
+            val updatedSplit = currentSplit.copy(
+                amount = newAmount.toString(),
+                notes = updatedNotes
+            )
+
+            val updateRequest = TransactionRequest(
+                transactions = listOf(updatedSplit)
+            )
+
+            FireflyApiClient.updateTransaction(transactionId, updateRequest)
+
+            val successMessage = buildString {
+                appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
+                appendLine()
+                appendLine("💰 Новая сумма: $newAmount")
+                append("📝 ${currentSplit.description}")
+            }
+
+            bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
         } else {
-            "${currentSplit.notes}\n$changeLog"
+            // Update description
+            if (newText.isBlank()) {
+                bot.sendMessage(message.chat, "⚠️ Описание не может быть пустым.", linkPreviewOptions = LinkPreviewOptions.Disabled)
+                return
+            }
+
+            bot.sendMessage(message.chat, "Обновляю описание транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
+
+            val oldDescription = currentSplit.description
+            val changeLog = "[$timestamp] Описание изменено: \"$oldDescription\" → \"$newText\""
+            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
+                changeLog
+            } else {
+                "${currentSplit.notes}\n$changeLog"
+            }
+
+            val updatedSplit = currentSplit.copy(
+                description = newText,
+                notes = updatedNotes
+            )
+
+            val updateRequest = TransactionRequest(
+                transactions = listOf(updatedSplit)
+            )
+
+            FireflyApiClient.updateTransaction(transactionId, updateRequest)
+
+            val successMessage = buildString {
+                appendLine("✅ Описание транзакции #$transactionId успешно обновлено")
+                appendLine()
+                appendLine("📝 Новое описание: $newText")
+                append("💰 Сумма: ${currentSplit.amount.formatAmount()} ${currentSplit.currencyCode ?: ""}")
+            }
+
+            bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
-
-        val updatedSplit = currentSplit.copy(
-            amount = newAmount.toString(),
-            notes = updatedNotes
-        )
-
-        val updateRequest = TransactionRequest(
-            transactions = listOf(updatedSplit)
-        )
-
-        FireflyApiClient.updateTransaction(transactionId, updateRequest)
-
-        val successMessage = buildString {
-            appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
-            appendLine()
-            appendLine("💰 Новая сумма: $newAmount")
-            append("📝 ${currentSplit.description}")
-        }
-
-        bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
-        KSLog.error("Error correcting amount", e)
-        bot.sendMessage(message.chat, "❌ Ошибка при обновлении суммы: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
+        KSLog.error("Error updating transaction", e)
+        bot.sendMessage(message.chat, "❌ Ошибка при обновлении транзакции: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }
