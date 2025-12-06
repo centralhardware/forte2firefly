@@ -14,13 +14,6 @@ import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("MediaHandler")
 
-/**
- * Регистрирует обработчики для всех типов медиа-контента (фото, документы)
- * Унифицированная логика:
- * - Если это reply на сообщение с ID транзакции - прикрепляем файл к транзакции
- * - Если это фото (не reply) - распознаём через OCR и создаём транзакцию
- * - Если это документ (не reply) - просим отправить как reply
- */
 fun BehaviourContext.registerMediaHandler(
     parser: TransactionParser,
     ocrService: OCRService
@@ -33,7 +26,6 @@ fun BehaviourContext.registerMediaHandler(
                 return@onPhoto
             }
 
-            // Создаём новую транзакцию из фото через OCR
             if (message.mediaGroupId == null) {
                 sendMessage(message.chat, "Фото получено, обрабатываю...", linkPreviewOptions = LinkPreviewOptions.Disabled)
             }
@@ -53,7 +45,6 @@ fun BehaviourContext.registerMediaHandler(
         }
     }
 
-    // Обработка документов
     onDocument { message ->
         try {
             val replyTo = message.replyTo
@@ -62,7 +53,6 @@ fun BehaviourContext.registerMediaHandler(
                 return@onDocument
             }
 
-            // Документ без reply - просим отправить как reply
             sendMessage(message.chat, "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         } catch (e: Exception) {
             logger.error("Error processing document", e)
@@ -70,7 +60,6 @@ fun BehaviourContext.registerMediaHandler(
         }
     }
 
-    // Обработка галереи фото
     onVisualGallery { gallery ->
         val messages = gallery.group
         val totalCount = messages.size

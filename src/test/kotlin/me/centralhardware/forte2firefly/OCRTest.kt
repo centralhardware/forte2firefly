@@ -108,7 +108,7 @@ class OCRTest {
         }
 
         println("\n🔍 Running OCR with preprocessing...")
-        val recognizedText = ocrService.recognizeTextWithPreprocessing(photoBytes)
+        val recognizedText = ocrService.recognizeText(photoBytes)
 
         println("\n📝 OCR Result (with preprocessing):")
         println("=" * 50)

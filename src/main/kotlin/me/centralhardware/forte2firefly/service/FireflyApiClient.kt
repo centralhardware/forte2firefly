@@ -60,10 +60,9 @@ object FireflyApiClient {
     }
 
     suspend fun createTransaction(transaction: TransactionRequest): TransactionResponse {
-        val response = client.post("/api/v1/transactions") {
+        return client.post("/api/v1/transactions") {
             setBody(transaction)
-        }
-        return response.handleResponse("create transaction in Firefly")
+        }.handleResponse("create transaction in Firefly")
     }
 
     suspend fun createAndUploadAttachment(
@@ -95,23 +94,21 @@ object FireflyApiClient {
     }
 
     suspend fun getTransaction(transactionId: String): TransactionResponse {
-        val response = client.get("/api/v1/transactions/$transactionId")
-        return response.handleResponse("get transaction from Firefly")
+        return client.get("/api/v1/transactions/$transactionId")
+            .handleResponse("get transaction from Firefly")
     }
 
     suspend fun updateTransaction(transactionId: String, transaction: TransactionRequest): TransactionResponse {
-        val response = client.put("/api/v1/transactions/$transactionId") {
+        return client.put("/api/v1/transactions/$transactionId") {
             setBody(transaction)
-        }
-        return response.handleResponse("update transaction in Firefly")
+        }.handleResponse("update transaction in Firefly")
     }
 
     suspend fun getBudgetLimits(budgetName: String, start: String, end: String): BudgetLimitResponse {
-        val response = client.get("/api/v1/budgets/$budgetName/limits") {
+        return client.get("/api/v1/budgets/$budgetName/limits") {
             parameter("start", start)
             parameter("end", end)
-        }
-        return response.handleResponse("get budget limits from Firefly")
+        }.handleResponse("get budget limits from Firefly")
     }
 
     suspend fun getTransactions(start: String, end: String, type: String = "withdrawal"): TransactionListResponse {
@@ -142,11 +139,7 @@ object FireflyApiClient {
     }
 
     suspend fun getBudgets(): BudgetListResponse {
-        val response = client.get("/api/v1/budgets")
-        return response.handleResponse("get budgets from Firefly")
+        return client.get("/api/v1/budgets").handleResponse("get budgets from Firefly")
     }
 
-    fun close() {
-        client.close()
-    }
 }

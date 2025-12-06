@@ -67,11 +67,6 @@ fun BehaviourContext.registerBudgetHandler() {
 
         } catch (e: Exception) {
             logger.error("Error handling budget callback", e)
-            try {
-                answer(query, "Ошибка при изменении бюджета")
-            } catch (answerError: Exception) {
-                logger.error("Error answering callback query", answerError)
-            }
         }
     }
 }

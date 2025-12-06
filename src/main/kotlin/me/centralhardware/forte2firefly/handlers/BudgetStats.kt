@@ -26,7 +26,6 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         val start = startOfMonth.format(dateFormatter)
         val end = endOfMonth.format(dateFormatter)
 
-        // Получаем ID бюджета по имени
         val budgetId = try {
             val budgets = FireflyApiClient.getBudgets()
             budgets.data.find { it.attributes.name == Budget.MAIN.budgetName }?.id
@@ -35,7 +34,6 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             null
         }
 
-        // Получаем лимит бюджета в USD (может не существовать)
         val budgetLimit = if (budgetId != null) {
             try {
                 val budgetLimits = FireflyApiClient.getBudgetLimits(budgetId, start, end)
@@ -48,15 +46,12 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             null
         }
 
-        // Получаем потраченную сумму из лимита бюджета (если есть)
         val totalSpent = budgetLimit?.spent
             ?.find { it.currencyCode == "USD" }
             ?.sum?.toDoubleOrNull()?.absoluteValue ?: 0.0
 
-        // Получаем все транзакции за месяц для топ-5 категорий
         val transactions = FireflyApiClient.getTransactions(start, end)
 
-        // Фильтруем по бюджету main
         val mainBudgetTransactions = transactions.data.filter { transaction ->
             transaction.attributes.transactions.any {
                 it.budgetName == Budget.MAIN.budgetName
@@ -65,9 +60,8 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
 
         val daysInMonth = yearMonth.lengthOfMonth()
         val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() // Дни без сегодня
-        val daysRemaining = daysInMonth - daysPassed - 1 // Дни после сегодня
+        val daysRemaining = daysInMonth - daysPassed - 1
 
-        // Траты за сегодня
         val todayTransactions = transactions.data.filter { transaction ->
             transaction.attributes.transactions.any {
                 it.budgetName == Budget.MAIN.budgetName &&
@@ -86,7 +80,6 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         val avgPerDay = if (daysPassed > 0) spentBeforeToday / daysPassed else 0.0
         val normalPerDay = if (daysInMonth > 0 && budgetAmount > 0) budgetAmount / daysInMonth else 0.0
 
-        // Топ 5 категорий (destination_name) в USD
         val categorySpending = mainBudgetTransactions
             .flatMap { it.attributes.transactions }
             .filter { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }
@@ -100,17 +93,13 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             .sortedByDescending { it.value.first }
             .take(5)
 
-        // Потенциальные траты на сегодня (минимум норма)
         val potentialTodaySpent = if (todaySpent < normalPerDay) normalPerDay else todaySpent
         
-        // Фактический остаток (для отображения)
         val remaining = budgetAmount - totalSpent
         
-        // Остаток с учетом потенциальных трат сегодня (для расчета доступного на будущие дни)
         val remainingAfterToday = budgetAmount - spentBeforeToday - potentialTodaySpent
         val avgPerDayRemaining = if (daysRemaining > 0) remainingAfterToday / daysRemaining else 0.0
 
-        // Подсчитываем общее количество транзакций по бюджету main
         val totalTransactionsCount = mainBudgetTransactions
             .flatMap { it.attributes.transactions }
             .count { it.budgetName == Budget.MAIN.budgetName && it.currencyCode == "USD" }

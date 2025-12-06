@@ -13,8 +13,6 @@ import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 import org.slf4j.LoggerFactory
 
-private val logger = LoggerFactory.getLogger("PhotoProcessor")
-
 suspend fun processPhotoTransaction(
     photoBytes: ByteArray,
     chatId: Chat,
@@ -23,7 +21,7 @@ suspend fun processPhotoTransaction(
     bot: TelegramBot,
     progressPrefix: String = ""
 ): String? {
-    val text = ocrService.recognizeTextWithPreprocessing(photoBytes)
+    val text = ocrService.recognizeText(photoBytes)
 
     if (text.isBlank()) {
         bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото", linkPreviewOptions = LinkPreviewOptions.Disabled)

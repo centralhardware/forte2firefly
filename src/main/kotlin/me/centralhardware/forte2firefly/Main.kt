@@ -9,40 +9,25 @@ import dev.inmo.tgbotapi.types.BotCommand
 import dev.inmo.tgbotapi.utils.RiskFeature
 import me.centralhardware.forte2firefly.handlers.*
 import me.centralhardware.forte2firefly.service.*
-import org.slf4j.LoggerFactory
 import restrictAccess
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
-    val logger = LoggerFactory.getLogger("Main")
     AppConfig.init("forte2firefly")
-    
-    try {
-        startBot(logger)
-    } catch (e: Exception) {
-        logger.error("Fatal error", e)
-        throw e
-    }
-}
-
-suspend fun startBot(logger: org.slf4j.Logger) {
     val parser = TransactionParser()
     val ocrService = OCRService(tessdataPath = Config.tessdataPrefix)
 
-    val longPolling = longPolling (
+    longPolling (
         middlewares = {
             addMiddleware { restrictAccess(EnvironmentVariableUserAccessChecker()) }
         }
     ) {
+        setMyCommands(
+            BotCommand("stats", "Show budget statistics for the current month")
+        )
+
         registerMediaHandler(parser, ocrService)
         registerTextHandler()
         registerBudgetHandler()
-    }
-    
-    val bot = longPolling.first
-    bot.setMyCommands(
-        BotCommand("stats", "Show budget statistics for the current month")
-    )
-    
-    longPolling.second.join()
+    }.second.join()
 }
