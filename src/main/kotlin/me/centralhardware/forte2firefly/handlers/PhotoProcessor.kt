@@ -88,7 +88,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
         }
         if (progressPrefix.isEmpty()) {
             appendLine("🏦 Счёт: $sourceAccount")
-            appendLine("📅 Дата: ${forteTransaction.dateTime}")
+            appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
         }
         append("🔢 ID: ${transactionResponse.data.id}")
     }

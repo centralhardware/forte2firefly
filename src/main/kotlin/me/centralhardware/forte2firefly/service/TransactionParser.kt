@@ -7,6 +7,8 @@ import dev.inmo.kslog.common.error
 import dev.inmo.kslog.common.info
 import dev.inmo.kslog.common.warning
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 
@@ -72,12 +74,24 @@ object TransactionParser {
 
     private fun findDescription(lines: List<String>): String? {
         val purchaseIndex = lines.indexOfFirst { it.contains("Purchase", ignoreCase = true) }
-        if (purchaseIndex >= 0 && purchaseIndex + 1 < lines.size) {
-            return lines[purchaseIndex + 1]
+        if (purchaseIndex >= 0) {
+            // Ищем первую подходящую строку после "Purchase"
+            for (i in (purchaseIndex + 1) until lines.size) {
+                val line = lines[i]
+                // Пропускаем артефакты OCR, символы и строки с суммами
+                if (line.length > 3 &&
+                    !line.matches(Regex("^[a-z]$")) && // пропускаем одиночные буквы
+                    !line.contains(Regex("^[©<>()8]")) && // пропускаем символы и артефакты OCR
+                    !line.matches(Regex("^\\d+$")) && // пропускаем строки только с цифрами
+                    !line.matches(Regex("^-.*[₸$€£¥₽]")) && // пропускаем строки с суммами (начинаются с минуса и содержат валюту)
+                    line.contains(Regex("[A-Z]"))) { // должна содержать хотя бы одну заглавную букву
+                    return line
+                }
+            }
         }
 
         return lines.firstOrNull { line ->
-            line.contains(Regex("[A-Z]{2,}")) &&
+            line.contains(Regex("[A-Z]+")) &&
                     !line.contains("Purchase", ignoreCase = true) &&
                     !line.contains("Card", ignoreCase = true) &&
                     !line.contains(Regex("^\\d{2}:\\d{2}")) &&
@@ -99,9 +113,9 @@ object TransactionParser {
                 continue
             }
 
-            val amountMatch = Regex("""(-\d+[,.]?\d*)\s*([^\d\s:]+)""").find(line)
+            val amountMatch = Regex("""(-[\d\s]+[,.]?\d*)\s*([^\d\s:]+)""").find(line)
             if (amountMatch != null) {
-                val amount = amountMatch.groupValues[1].replace(",", ".")
+                val amount = amountMatch.groupValues[1].replace(" ", "").replace(",", ".")
                 val currencySymbol = amountMatch.groupValues[2].trim()
                 KSLog.debug("  -> Found negative match: amount='$amount', currency='$currencySymbol'")
 
@@ -141,14 +155,44 @@ object TransactionParser {
         return null
     }
 
-    private fun findDateTime(lines: List<String>): String? {
-        val dateTimeIndex = lines.indexOfFirst { it.contains("Date and time", ignoreCase = true) }
-        if (dateTimeIndex >= 0 && dateTimeIndex + 1 < lines.size) {
-            return lines[dateTimeIndex + 1]
-        }
+    private fun findDateTime(lines: List<String>): ZonedDateTime? {
+        val dateTimeStr = run {
+            val dateTimeIndex = lines.indexOfFirst { it.contains("Date and time", ignoreCase = true) }
+            if (dateTimeIndex >= 0 && dateTimeIndex + 1 < lines.size) {
+                lines[dateTimeIndex + 1]
+            } else {
+                // Поддерживаем OCR артефакты: O вместо 0, l вместо 1 и т.д.
+                lines.firstOrNull { line ->
+                    line.contains(Regex("[O\\d]{2}\\s+\\w+.*\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}"))
+                }
+            }
+        } ?: return null
 
-        return lines.firstOrNull { line ->
-            line.contains(Regex("\\d{2}\\s+\\w+.*\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}"))
+        return parseForteDateTime(dateTimeStr)
+    }
+
+    private fun parseForteDateTime(forteDateTime: String): ZonedDateTime? {
+        return try {
+            // Заменяем OCR артефакты: "O" на "0", убираем "'s"
+            val cleanedDate = forteDateTime
+                .replace("'s", "")
+                .replace(Regex("^O"), "0") // O09 -> 009, O6 -> 06
+                .replace(Regex("^0+(\\d{2})"), "$1") // 009 -> 09
+                .trim()
+
+            val inputFormatter = DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .appendPattern("dd MMMM yyyy HH:mm:ss")
+                .toFormatter(java.util.Locale.ENGLISH)
+
+            val localDateTime = LocalDateTime.parse(cleanedDate, inputFormatter)
+
+            // Время на фото в казахстанской зоне (Asia/Almaty)
+            val almatyZone = ZoneId.of("Asia/Almaty")
+            ZonedDateTime.of(localDateTime, almatyZone)
+        } catch (e: Exception) {
+            KSLog.error("Error parsing date: '$forteDateTime'", e)
+            null
         }
     }
 
@@ -199,29 +243,14 @@ object TransactionParser {
         return null
     }
 
-    fun convertToFireflyDate(forteDateTime: String): String {
-        try {
-            val cleanedDate = forteDateTime.replace("'s", "").trim()
+    fun convertToFireflyDate(zonedDateTime: ZonedDateTime): String {
+        // Firefly хранит все в UTC, поэтому конвертируем в UTC
+        val utcZone = ZoneId.of("UTC")
+        val utcTime = zonedDateTime.withZoneSameInstant(utcZone)
 
-            KSLog.debug("Parsing date: '$cleanedDate'")
-
-            val inputFormatter = DateTimeFormatterBuilder()
-                .parseCaseInsensitive()
-                .appendPattern("dd MMMM yyyy HH:mm:ss")
-                .toFormatter(java.util.Locale.ENGLISH)
-
-            val dateTime = LocalDateTime.parse(cleanedDate, inputFormatter)
-
-            val result = dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            KSLog.debug("Converted date: '$forteDateTime' -> '$result'")
-            return result
-
-        } catch (e: Exception) {
-            KSLog.error("Error converting date: '$forteDateTime'", e)
-            val fallbackDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            KSLog.warning("Using fallback date: $fallbackDate")
-            return fallbackDate
-        }
+        val result = utcTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        KSLog.debug("Converted date: ${zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)} (${zonedDateTime.zone}) -> $result (UTC)")
+        return result
     }
 
     fun detectCurrency(currencySymbol: String): String {
@@ -231,6 +260,7 @@ object TransactionParser {
             "£" -> "GBP"
             "¥" -> "JPY"
             "₽" -> "RUB"
+            "₸", "T" -> "KZT" // OCR часто распознает ₸ как T
             "RM" -> "MYR"
             else -> {
                 KSLog.warning("Unknown currency symbol: $currencySymbol, defaulting to USD")

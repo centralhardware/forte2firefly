@@ -50,3 +50,4 @@ bin/
 !.env.example.idea/
 *.txt
 *.jpg
+!src/test/resources/**/*.jpg
