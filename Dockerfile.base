@@ -1,6 +1,6 @@
 FROM azul/zulu-openjdk:24
 
-# --- 1. Build dependencies ---
+# --- Build deps ---
 RUN apt-get update && apt-get install -y \
     autoconf automake libtool pkg-config \
     g++ make wget \
@@ -8,19 +8,16 @@ RUN apt-get update && apt-get install -y \
     libwebp-dev libopenjp2-7-dev libarchive-dev \
     && rm -rf /var/lib/apt/lists/*
 
-
-# --- 2. Install Leptonica 1.86 ---
+# --- 1. Build Leptonica 1.86.0 ---
 RUN wget https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.86.0.tar.gz \
  && tar -xzf 1.86.0.tar.gz \
  && cd leptonica-1.86.0 \
- && ./autobuild \
  && ./configure \
  && make -j$(nproc) \
  && make install \
  && ldconfig
 
-
-# --- 3. Build Tesseract 5.5.1 ---
+# --- 2. Build Tesseract 5.5.1 ---
 RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
  && tar -xzf 5.5.1.tar.gz \
  && cd tesseract-5.5.1 \
@@ -30,13 +27,12 @@ RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
  && make install \
  && ldconfig
 
-
-# --- 4. Install ENG language model ---
+# --- 3. Install ENG lang model ---
 RUN mkdir -p /usr/local/share/tessdata && \
     wget https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata \
         -O /usr/local/share/tessdata/eng.traineddata
 
 ENV TESSDATA_PREFIX=/usr/local/share/tessdata
 
-# --- 5. Verify versions ---
+# --- 4. Verify ---
 RUN tesseract --version && tesseract --list-langs
