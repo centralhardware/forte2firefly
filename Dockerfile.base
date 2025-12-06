@@ -1,37 +1,15 @@
-FROM azul/zulu-openjdk:24
+# Официальный образ Tesseract 5.5.1 c современными библиотеками
+FROM ghcr.io/tesseract-ocr/tesseract:5.5.1
 
-RUN apt-get update && apt-get install -y \
-    autoconf automake libtool pkg-config \
-    g++ make wget \
-    libpng-dev libtiff-dev zlib1g-dev libjpeg-dev \
-    libwebp-dev libopenjp2-7-dev libarchive-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Устанавливаем Azul OpenJDK 24
+RUN apt-get update && apt-get install -y gnupg wget software-properties-common && \
+    wget -qO - https://repos.azul.com/azul-repo.key | apt-key add - && \
+    apt-add-repository 'deb https://repos.azul.com/zulu/deb stable main' && \
+    apt-get update && apt-get install -y zulu24-jdk && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# --- 1. Build Leptonica 1.86.0 ---
-RUN wget https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.86.0.tar.gz \
- && tar -xzf 1.86.0.tar.gz \
- && cd leptonica-1.86.0 \
- && ./autogen.sh \
- && ./configure \
- && make -j$(nproc) \
- && make install \
- && ldconfig
+# Убедимся, что используем правильный TESSDATA_PREFIX
+ENV TESSDATA_PREFIX=/usr/share/tessdata
 
-# --- 2. Build Tesseract 5.5.1 ---
-RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
- && tar -xzf 5.5.1.tar.gz \
- && cd tesseract-5.5.1 \
- && ./autogen.sh \
- && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure --disable-openmp \
- && make -j$(nproc) \
- && make install \
- && ldconfig
-
-# --- 3. Language files ---
-RUN mkdir -p /usr/local/share/tessdata && \
-    wget https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata \
-        -O /usr/local/share/tessdata/eng.traineddata
-
-ENV TESSDATA_PREFIX=/usr/local/share/tessdata
-
-RUN tesseract --version && tesseract --list-langs
+# Проверка
+RUN tesseract --version && java --version
