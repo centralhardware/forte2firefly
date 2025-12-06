@@ -1,33 +1,42 @@
 FROM azul/zulu-openjdk:24
 
-# Устанавливаем зависимости для сборки
+# --- 1. Build dependencies ---
 RUN apt-get update && apt-get install -y \
-    autoconf automake libtool \
-    pkg-config g++ make wget \
+    autoconf automake libtool pkg-config \
+    g++ make wget \
     libpng-dev libtiff-dev zlib1g-dev libjpeg-dev \
-    libwebp-dev libopenjp2-7-dev libarchive-dev libleptonica-dev \
+    libwebp-dev libopenjp2-7-dev libarchive-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Удаляем старый tesseract, если он есть
-RUN rm -f /usr/bin/tesseract || true
 
-# Сборка Tesseract 5.5.1
-RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
- && tar -xzf 5.5.1.tar.gz \
- && cd tesseract-5.5.1 \
- && ./autogen.sh \
+# --- 2. Install Leptonica 1.86 ---
+RUN wget https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.86.0.tar.gz \
+ && tar -xzf 1.86.0.tar.gz \
+ && cd leptonica-1.86.0 \
+ && ./autobuild \
  && ./configure \
  && make -j$(nproc) \
  && make install \
  && ldconfig
 
-# Устанавливаем языковые модели
+
+# --- 3. Build Tesseract 5.5.1 ---
+RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
+ && tar -xzf 5.5.1.tar.gz \
+ && cd tesseract-5.5.1 \
+ && ./autogen.sh \
+ && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure --disable-openmp \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
+
+# --- 4. Install ENG language model ---
 RUN mkdir -p /usr/local/share/tessdata && \
     wget https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata \
         -O /usr/local/share/tessdata/eng.traineddata
 
-# Правильный путь к tessdata (для сборки из исходников)
 ENV TESSDATA_PREFIX=/usr/local/share/tessdata
 
-# Проверка версии + языков
+# --- 5. Verify versions ---
 RUN tesseract --version && tesseract --list-langs

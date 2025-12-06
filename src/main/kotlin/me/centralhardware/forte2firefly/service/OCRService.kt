@@ -34,6 +34,9 @@ object OCRService {
                 // OEM 1 = Neural nets LSTM engine only (best accuracy)
                 setOcrEngineMode(1)
 
+                setVariable("load_system_dawg", "false")
+                setVariable("load_freq_dawg", "false")
+
                 KSLog.info("Tesseract OCR initialized successfully with language: eng")
                 KSLog.info("Using tessdata path: $tessdataPath")
             } catch (e: Exception) {
