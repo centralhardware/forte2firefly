@@ -1,4 +1,22 @@
 FROM azul/zulu-openjdk:24
 
-RUN apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-eng
+RUN apt-get update && apt-get install -y \
+    autoconf automake libtool \
+    pkg-config g++ make wget \
+    libpng-dev libtiff-dev zlib1g-dev libjpeg-dev \
+    libwebp-dev libopenjp2-7-dev libarchive-dev libleptonica-dev
+
+# Удаляем старый tesseract, если он предустановлен
+RUN rm -f /usr/bin/tesseract || true
+
+# Компиляция Tesseract 5.5.1
+RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
+ && tar -xzf 5.5.1.tar.gz \
+ && cd tesseract-5.5.1 \
+ && ./autogen.sh \
+ && ./configure \
+ && make -j$(nproc) \
+ && make install \
+ && ldconfig
+
 RUN tesseract --version
