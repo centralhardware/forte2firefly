@@ -13,10 +13,12 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.*
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.debug
+import dev.inmo.kslog.common.error
+import dev.inmo.kslog.common.info
 
 object FireflyApiClient {
-    private val logger = LoggerFactory.getLogger(FireflyApiClient::class.java)
 
     private val client = HttpClient(CIO) {
         install(ContentNegotiation) {
@@ -45,7 +47,7 @@ object FireflyApiClient {
     private suspend inline fun <reified T> HttpResponse.handleResponse(operationName: String): T {
         if (!status.isSuccess()) {
             val errorBody = bodyAsText()
-            logger.error("Firefly API error (${status}): $errorBody")
+            KSLog.error("Firefly API error (${status}): $errorBody")
             throw RuntimeException("Failed to $operationName: ${status}. Response: $errorBody")
         }
         return body()
@@ -54,7 +56,7 @@ object FireflyApiClient {
     private suspend fun HttpResponse.handleResponseUnit(operationName: String) {
         if (!status.isSuccess()) {
             val errorBody = bodyAsText()
-            logger.error("Firefly API error (${status}): $errorBody")
+            KSLog.error("Firefly API error (${status}): $errorBody")
             throw RuntimeException("Failed to $operationName: ${status}. Response: $errorBody")
         }
     }
@@ -130,11 +132,11 @@ object FireflyApiClient {
             val totalPages = pageResponse.meta?.pagination?.totalPages ?: 1
             hasMorePages = page < totalPages
             page++
-            
-            logger.debug("Fetched page $page/$totalPages with ${pageResponse.data.size} transactions")
+
+            KSLog.debug("Fetched page $page/$totalPages with ${pageResponse.data.size} transactions")
         }
 
-        logger.info("Fetched total ${allTransactions.size} transactions")
+        KSLog.info("Fetched total ${allTransactions.size} transactions")
         return TransactionListResponse(data = allTransactions)
     }
 

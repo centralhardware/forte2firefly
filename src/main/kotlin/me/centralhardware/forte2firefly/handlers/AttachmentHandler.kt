@@ -12,11 +12,10 @@ import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
-private val logger = LoggerFactory.getLogger("AttachmentHandler")
 
 suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
     message: CommonMessage<T>,
@@ -115,7 +114,7 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
-        logger.error("Error processing attachment reply", e)
+        KSLog.error("Error processing attachment reply", e)
         sendMessage(message.chat, "❌ Ошибка при прикреплении файла: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }

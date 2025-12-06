@@ -6,14 +6,14 @@ import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
+import dev.inmo.kslog.common.warning
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
-
-private val logger = LoggerFactory.getLogger("BudgetStats")
 
 suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
     try {
@@ -30,7 +30,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
             val budgets = FireflyApiClient.getBudgets()
             budgets.data.find { it.attributes.name == Budget.MAIN.budgetName }?.id
         } catch (e: Exception) {
-            logger.warn("Failed to fetch budgets: ${e.message}")
+            KSLog.warning("Failed to fetch budgets: ${e.message}")
             null
         }
 
@@ -39,7 +39,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
                 val budgetLimits = FireflyApiClient.getBudgetLimits(budgetId, start, end)
                 budgetLimits.data.find { it.attributes.currencyCode == "USD" }?.attributes
             } catch (e: Exception) {
-                logger.warn("Budget '${Budget.MAIN.budgetName}' has no limits: ${e.message}")
+                KSLog.warning("Budget '${Budget.MAIN.budgetName}' has no limits: ${e.message}")
                 null
             }
         } else {
@@ -157,7 +157,7 @@ suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
         bot.sendMessage(chatId, message, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
-        logger.error("Error generating budget stats", e)
+        KSLog.error("Error generating budget stats", e)
         bot.sendMessage(chatId, "❌ Ошибка при получении статистики: ${e.message}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }

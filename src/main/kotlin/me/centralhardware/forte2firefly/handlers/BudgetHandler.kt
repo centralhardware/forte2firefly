@@ -9,11 +9,10 @@ import dev.inmo.tgbotapi.types.message.content.TextContent
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
-private val logger = LoggerFactory.getLogger("BudgetHandler")
 
 fun BehaviourContext.registerBudgetHandler() {
     onMessageDataCallbackQuery(
@@ -22,7 +21,7 @@ fun BehaviourContext.registerBudgetHandler() {
         try {
             val parts = query.data.split(":")
             if (parts.size != 3) {
-                logger.error("Invalid callback data format: ${query.data}")
+                KSLog.error("Invalid callback data format: ${query.data}")
                 return@onMessageDataCallbackQuery
             }
 
@@ -66,7 +65,7 @@ fun BehaviourContext.registerBudgetHandler() {
             }
 
         } catch (e: Exception) {
-            logger.error("Error handling budget callback", e)
+            KSLog.error("Error handling budget callback", e)
         }
     }
 }

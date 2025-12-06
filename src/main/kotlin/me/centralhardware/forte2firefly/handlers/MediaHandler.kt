@@ -10,9 +10,8 @@ import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisual
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
-import org.slf4j.LoggerFactory
-
-private val logger = LoggerFactory.getLogger("MediaHandler")
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 
 fun BehaviourContext.registerMediaHandler(
     parser: TransactionParser,
@@ -40,7 +39,7 @@ fun BehaviourContext.registerMediaHandler(
             )
 
         } catch (e: Exception) {
-            logger.error("Error processing photo", e)
+            KSLog.error("Error processing photo", e)
             sendMessage(message.chat, "❌ Ошибка при обработке фото: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
@@ -55,7 +54,7 @@ fun BehaviourContext.registerMediaHandler(
 
             sendMessage(message.chat, "⚠️ Чтобы прикрепить документ к транзакции, отправьте его как reply на сообщение с ID транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         } catch (e: Exception) {
-            logger.error("Error processing document", e)
+            KSLog.error("Error processing document", e)
             sendMessage(message.chat, "❌ Ошибка при обработке документа: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
@@ -89,7 +88,7 @@ fun BehaviourContext.registerMediaHandler(
                 }
 
             } catch (e: Exception) {
-                logger.error("Error processing photo $progress from gallery", e)
+                KSLog.error("Error processing photo $progress from gallery", e)
                 failedCount++
                 sendMessage(msg.sourceMessage.chat, "${progress}❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
             }

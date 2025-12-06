@@ -1,18 +1,21 @@
 package me.centralhardware.forte2firefly.service
 
 import me.centralhardware.forte2firefly.model.ForteTransaction
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.debug
+import dev.inmo.kslog.common.error
+import dev.inmo.kslog.common.info
+import dev.inmo.kslog.common.warning
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 
 class TransactionParser {
-    private val logger = LoggerFactory.getLogger(TransactionParser::class.java)
 
-    
+
     fun parseTransaction(text: String): ForteTransaction? {
         try {
-            logger.info("Parsing transaction text: $text")
+            KSLog.info("Parsing transaction text: $text")
 
             val lines = text.lines()
                 .map { it.trim() }
@@ -20,33 +23,33 @@ class TransactionParser {
 
             val description = findDescription(lines)
             if (description == null) {
-                logger.warn("Could not find description")
+                KSLog.warning("Could not find description")
                 return null
             }
 
             val (amount, currencySymbol) = findAmount(lines) ?: run {
-                logger.warn("Could not find amount")
+                KSLog.warning("Could not find amount")
                 return null
             }
 
             val dateTime = findDateTime(lines) ?: run {
-                logger.warn("Could not find date time")
+                KSLog.warning("Could not find date time")
                 return null
             }
 
             val from = findFrom(lines) ?: run {
-                logger.warn("Could not find from (card)")
+                KSLog.warning("Could not find from (card)")
                 return null
             }
 
             val transactionNumber = findTransactionNumber(lines) ?: run {
-                logger.warn("Could not find transaction number")
+                KSLog.warning("Could not find transaction number")
                 return null
             }
 
             val transactionAmount = findTransactionAmount(lines)
             if (transactionAmount == null) {
-                logger.info("Transaction amount not found (no currency conversion)")
+                KSLog.info("Transaction amount not found (no currency conversion)")
             }
 
             val transaction = ForteTransaction(
@@ -59,11 +62,11 @@ class TransactionParser {
                 transactionAmount = transactionAmount
             )
 
-            logger.info("Successfully parsed transaction: $transaction")
+            KSLog.info("Successfully parsed transaction: $transaction")
             return transaction
 
         } catch (e: Exception) {
-            logger.error("Error parsing transaction", e)
+            KSLog.error("Error parsing transaction", e)
             return null
         }
     }
@@ -85,15 +88,15 @@ class TransactionParser {
     }
 
     private fun findAmount(lines: List<String>): Pair<String, String>? {
-        logger.debug("Searching for amount in lines:")
+        KSLog.debug("Searching for amount in lines:")
 
         for ((index, line) in lines.withIndex()) {
-            logger.debug("Line $index: '$line'")
+            KSLog.debug("Line $index: '$line'")
 
             if (line.matches(Regex("^\\d{2}:\\d{2}")) ||
                 line.contains("Purchase", ignoreCase = true) ||
                 line.matches(Regex("^\\d+$"))) { // просто число без валюты
-                logger.debug("  -> Skipped (time/UI pattern)")
+                KSLog.debug("  -> Skipped (time/UI pattern)")
                 continue
             }
 
@@ -101,13 +104,13 @@ class TransactionParser {
             if (amountMatch != null) {
                 val amount = amountMatch.groupValues[1].replace(",", ".")
                 val currencySymbol = amountMatch.groupValues[2].trim()
-                logger.debug("  -> Found negative match: amount='$amount', currency='$currencySymbol'")
+                KSLog.debug("  -> Found negative match: amount='$amount', currency='$currencySymbol'")
 
                 if (currencySymbol.length in 1..3 && currencySymbol != ":") {
                     val amountValue = amount.removePrefix("-").toDoubleOrNull()
-                    logger.debug("  -> Amount value: $amountValue")
+                    KSLog.debug("  -> Amount value: $amountValue")
                     if (amountValue != null && amountValue > 0) {
-                        logger.info("Found amount: $amount $currencySymbol")
+                        KSLog.info("Found amount: $amount $currencySymbol")
                         return Pair(amount, currencySymbol)
                     }
                 }
@@ -128,14 +131,14 @@ class TransactionParser {
                 if (currencySymbol.length in 1..3 && currencySymbol != ":") {
                     val amountValue = amount.toDoubleOrNull()
                     if (amountValue != null && amountValue > 0) {
-                        logger.info("Found amount: $amount $currencySymbol")
+                        KSLog.info("Found amount: $amount $currencySymbol")
                         return Pair(amount, currencySymbol)
                     }
                 }
             }
         }
 
-        logger.warn("Amount not found in text")
+        KSLog.warning("Amount not found in text")
         return null
     }
 
@@ -201,7 +204,7 @@ class TransactionParser {
         try {
             val cleanedDate = forteDateTime.replace("'s", "").trim()
 
-            logger.debug("Parsing date: '$cleanedDate'")
+            KSLog.debug("Parsing date: '$cleanedDate'")
 
             val inputFormatter = DateTimeFormatterBuilder()
                 .parseCaseInsensitive()
@@ -211,13 +214,13 @@ class TransactionParser {
             val dateTime = LocalDateTime.parse(cleanedDate, inputFormatter)
 
             val result = dateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            logger.debug("Converted date: '$forteDateTime' -> '$result'")
+            KSLog.debug("Converted date: '$forteDateTime' -> '$result'")
             return result
 
         } catch (e: Exception) {
-            logger.error("Error converting date: '$forteDateTime'", e)
+            KSLog.error("Error converting date: '$forteDateTime'", e)
             val fallbackDate = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            logger.warn("Using fallback date: $fallbackDate")
+            KSLog.warning("Using fallback date: $fallbackDate")
             return fallbackDate
         }
     }
@@ -231,7 +234,7 @@ class TransactionParser {
             "₽" -> "RUB"
             "RM" -> "MYR"
             else -> {
-                logger.warn("Unknown currency symbol: $currencySymbol, defaulting to USD")
+                KSLog.warning("Unknown currency symbol: $currencySymbol, defaulting to USD")
                 "USD"
             }
         }

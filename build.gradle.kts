@@ -15,7 +15,7 @@ repositories {
 
 val ktorVersion = "3.3.2"
 val tgbotapiVersion = "30.0.2"
-val logbackVersion = "1.5.15"
+val kslogVersion = "1.5.0"
 val tesseractVersion = "5.12.0"
 
 dependencies {
@@ -36,7 +36,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 
     // Logging
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation("dev.inmo:kslog:$kslogVersion")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")

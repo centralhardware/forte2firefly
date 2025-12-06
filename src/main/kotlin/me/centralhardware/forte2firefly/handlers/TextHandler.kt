@@ -10,11 +10,10 @@ import dev.inmo.tgbotapi.types.message.abstracts.Message
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import org.slf4j.LoggerFactory
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
-private val logger = LoggerFactory.getLogger("TextHandler")
 
 fun BehaviourContext.registerTextHandler() {
     onContentMessage(
@@ -40,7 +39,7 @@ fun BehaviourContext.registerTextHandler() {
                 )
             }
         } catch (e: Exception) {
-            logger.error("Error processing text message", e)
+            KSLog.error("Error processing text message", e)
             sendMessage(message.chat, "❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
         }
     }
@@ -113,7 +112,7 @@ private suspend fun handleAmountCorrection(
         bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
-        logger.error("Error correcting amount", e)
+        KSLog.error("Error correcting amount", e)
         bot.sendMessage(message.chat, "❌ Ошибка при обновлении суммы: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
     }
 }

@@ -11,7 +11,6 @@ import me.centralhardware.forte2firefly.model.TransactionSplit
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
-import org.slf4j.LoggerFactory
 
 suspend fun processPhotoTransaction(
     photoBytes: ByteArray,
