@@ -8,14 +8,11 @@ import dev.inmo.tgbotapi.longPolling
 import dev.inmo.tgbotapi.types.BotCommand
 import dev.inmo.tgbotapi.utils.RiskFeature
 import me.centralhardware.forte2firefly.handlers.*
-import me.centralhardware.forte2firefly.service.*
 import restrictAccess
 
 @OptIn(Warning::class, RiskFeature::class)
 suspend fun main() {
     AppConfig.init("forte2firefly")
-    val parser = TransactionParser()
-    val ocrService = OCRService(tessdataPath = Config.tessdataPrefix)
 
     longPolling (
         middlewares = {
@@ -26,7 +23,7 @@ suspend fun main() {
             BotCommand("stats", "Show budget statistics for the current month")
         )
 
-        registerMediaHandler(parser, ocrService)
+        registerMediaHandler()
         registerTextHandler()
         registerBudgetHandler()
     }.second.join()

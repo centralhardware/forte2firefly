@@ -1,7 +1,7 @@
 package me.centralhardware.forte2firefly.handlers
 
-import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
+import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
 import me.centralhardware.forte2firefly.model.Budget
@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.absoluteValue
 
-suspend fun generateBudgetStats(chatId: Chat, bot: TelegramBot) {
+suspend fun BehaviourContext.generateBudgetStats(chatId: Chat) {
     try {
         val now = LocalDate.now()
         val yearMonth = YearMonth.from(now)

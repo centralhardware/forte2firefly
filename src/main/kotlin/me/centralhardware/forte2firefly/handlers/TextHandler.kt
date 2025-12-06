@@ -24,7 +24,7 @@ fun BehaviourContext.registerTextHandler() {
 
             when {
                 text.startsWith("/stats") || text.startsWith("/budget") -> {
-                    generateBudgetStats(message.chat, bot)
+                    generateBudgetStats(message.chat)
                     return@onContentMessage
                 }
             }
@@ -34,8 +34,7 @@ fun BehaviourContext.registerTextHandler() {
                 @Suppress("UNCHECKED_CAST")
                 handleTransactionUpdate(
                     message as CommonMessage<TextContent>,
-                    replyTo,
-                    bot
+                    replyTo
                 )
             }
         } catch (e: Exception) {
@@ -45,10 +44,9 @@ fun BehaviourContext.registerTextHandler() {
     }
 }
 
-private suspend fun handleTransactionUpdate(
+private suspend fun BehaviourContext.handleTransactionUpdate(
     message: CommonMessage<TextContent>,
-    replyTo: Message,
-    bot: TelegramBot
+    replyTo: Message
 ) {
     try {
         val newText = message.content.text.trim()

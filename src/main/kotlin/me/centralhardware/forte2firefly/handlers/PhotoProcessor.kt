@@ -1,7 +1,7 @@
 package me.centralhardware.forte2firefly.handlers
 
-import dev.inmo.tgbotapi.bot.TelegramBot
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
+import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
 import me.centralhardware.forte2firefly.Config
@@ -12,28 +12,25 @@ import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 
-suspend fun processPhotoTransaction(
+suspend fun BehaviourContext.processPhotoTransaction(
     photoBytes: ByteArray,
     chatId: Chat,
-    parser: TransactionParser,
-    ocrService: OCRService,
-    bot: TelegramBot,
     progressPrefix: String = ""
 ): String? {
-    val text = ocrService.recognizeText(photoBytes)
+    val text = OCRService.recognizeText(photoBytes)
 
     if (text.isBlank()) {
         bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
 
-    val forteTransaction = parser.parseTransaction(text)
+    val forteTransaction = TransactionParser.parseTransaction(text)
     if (forteTransaction == null) {
         bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
 
-    val detectedCurrency = parser.detectCurrency(forteTransaction.currencySymbol)
+    val detectedCurrency = TransactionParser.detectCurrency(forteTransaction.currencySymbol)
     val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
@@ -44,7 +41,7 @@ suspend fun processPhotoTransaction(
         transactions = listOf(
             TransactionSplit(
                 type = "withdrawal",
-                date = parser.convertToFireflyDate(forteTransaction.dateTime),
+                date = TransactionParser.convertToFireflyDate(forteTransaction.dateTime),
                 amount = forteTransaction.amount,
                 description = forteTransaction.description,
                 sourceName = sourceAccount,

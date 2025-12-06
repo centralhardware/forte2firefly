@@ -12,10 +12,7 @@ import me.centralhardware.forte2firefly.service.TransactionParser
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.error
 
-fun BehaviourContext.registerMediaHandler(
-    parser: TransactionParser,
-    ocrService: OCRService
-) {
+fun BehaviourContext.registerMediaHandler() {
     onPhoto { message ->
         try {
             val replyTo = message.replyTo
@@ -31,10 +28,7 @@ fun BehaviourContext.registerMediaHandler(
             val photoBytes = bot.downloadFile(message.content)
             processPhotoTransaction(
                 photoBytes = photoBytes,
-                chatId = message.chat,
-                parser = parser,
-                ocrService = ocrService,
-                bot = bot
+                chatId = message.chat
             )
 
         } catch (e: Exception) {
@@ -75,9 +69,6 @@ fun BehaviourContext.registerMediaHandler(
                 val transactionId = processPhotoTransaction(
                     photoBytes = photoBytes,
                     chatId = msgChat,
-                    parser = parser,
-                    ocrService = ocrService,
-                    bot = bot,
                     progressPrefix = progress
                 )
                 if (transactionId != null) {
