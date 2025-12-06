@@ -118,17 +118,8 @@ private suspend fun handleTransactionUpdate(
 
             bot.sendMessage(message.chat, "Обновляю описание транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
-            val oldDescription = currentSplit.description
-            val changeLog = "[$timestamp] Описание изменено: \"$oldDescription\" → \"$newText\""
-            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
-                changeLog
-            } else {
-                "${currentSplit.notes}\n$changeLog"
-            }
-
             val updatedSplit = currentSplit.copy(
-                description = newText,
-                notes = updatedNotes
+                description = newText
             )
 
             val updateRequest = TransactionRequest(
