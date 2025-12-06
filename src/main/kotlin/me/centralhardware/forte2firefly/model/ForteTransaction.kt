@@ -9,5 +9,6 @@ data class ForteTransaction(
     val dateTime: ZonedDateTime,
     val from: String,
     val transactionNumber: String,
-    val transactionAmount: String?
+    val transactionAmount: String?,
+    val mccCode: String?
 )

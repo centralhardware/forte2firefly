@@ -37,6 +37,12 @@ suspend fun BehaviourContext.processPhotoTransaction(
     val foreignAmount = forteTransaction.transactionAmount
     val foreignCurrency = if (foreignAmount != null) Config.defaultCurrency else null
 
+    val tags = buildList {
+        if (forteTransaction.mccCode != null) {
+            add("mcc:${forteTransaction.mccCode}")
+        }
+    }.takeIf { it.isNotEmpty() }
+
     val transactionRequest = TransactionRequest(
         transactions = listOf(
             TransactionSplit(
@@ -51,7 +57,8 @@ suspend fun BehaviourContext.processPhotoTransaction(
                 foreignCurrencyCode = foreignCurrency,
                 externalId = forteTransaction.transactionNumber,
                 notes = "Imported from Forte via Telegram Bot",
-                budgetName = Budget.MAIN.budgetName
+                budgetName = Budget.MAIN.budgetName,
+                tags = tags
             )
         )
     )

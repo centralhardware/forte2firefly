@@ -53,6 +53,11 @@ object TransactionParser {
                 KSLog.info("Transaction amount not found (no currency conversion)")
             }
 
+            val mccCode = findMccCode(lines)
+            if (mccCode == null) {
+                KSLog.info("MCC code not found")
+            }
+
             val transaction = ForteTransaction(
                 description = description,
                 amount = amount.removePrefix("-"),
@@ -60,7 +65,8 @@ object TransactionParser {
                 dateTime = dateTime,
                 from = from,
                 transactionNumber = transactionNumber,
-                transactionAmount = transactionAmount
+                transactionAmount = transactionAmount,
+                mccCode = mccCode
             )
 
             KSLog.info("Successfully parsed transaction: $transaction")
@@ -240,6 +246,61 @@ object TransactionParser {
             }
         }
 
+        return null
+    }
+
+    private fun findMccCode(lines: List<String>): String? {
+        val mccIndex = lines.indexOfFirst { 
+            it.contains("mcc", ignoreCase = true) && it.contains("code", ignoreCase = true)
+        }
+        if (mccIndex >= 0 && mccIndex + 1 < lines.size) {
+            val nextLine = lines[mccIndex + 1]
+            // Очищаем строку от OCR артефактов и ищем 4-значный код
+            val cleanedLine = nextLine
+                .replace("p", "5")  // p часто распознается вместо 5
+                .replace("P", "5")
+                .replace("g", "9")  // g часто распознается вместо 9
+                .replace("G", "9")
+                .replace("O", "0")  // O вместо 0
+                .replace("o", "0")
+                .replace("l", "1")  // l вместо 1
+                .replace("I", "1")  // I вместо 1
+                .replace("S", "5")  // S вместо 5
+                .replace("B", "8")  // B вместо 8
+            
+            // MCC код - это 4-значное число
+            val mccMatch = Regex("""(\d{4})""").find(cleanedLine)
+            if (mccMatch != null) {
+                KSLog.info("Found MCC code: ${mccMatch.groupValues[1]} (from OCR text: $nextLine)")
+                return mccMatch.groupValues[1]
+            }
+        }
+
+        // Попытка найти MCC в той же строке (например "mcc - code 5912")
+        val sameLine = lines.firstOrNull { 
+            it.contains("mcc", ignoreCase = true) && it.contains("code", ignoreCase = true)
+        }
+        if (sameLine != null) {
+            val cleanedLine = sameLine
+                .replace("p", "5")
+                .replace("P", "5")
+                .replace("g", "9")
+                .replace("G", "9")
+                .replace("O", "0")
+                .replace("o", "0")
+                .replace("l", "1")
+                .replace("I", "1")
+                .replace("S", "5")
+                .replace("B", "8")
+            
+            val mccMatch = Regex("""(\d{4})""").find(cleanedLine)
+            if (mccMatch != null) {
+                KSLog.info("Found MCC code in same line: ${mccMatch.groupValues[1]} (from OCR text: $sameLine)")
+                return mccMatch.groupValues[1]
+            }
+        }
+
+        KSLog.info("MCC code not found")
         return null
     }
 

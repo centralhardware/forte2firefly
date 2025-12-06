@@ -24,7 +24,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute: Int,
         expectedSecond: Int,
         expectedCardLast4: String,
-        expectedTransactionNumber: String
+        expectedTransactionNumber: String,
+        expectedMccCode: String? = null
     ) = runBlocking {
         val photoStream = javaClass.classLoader.getResourceAsStream(photoFileName)
             ?: this::class.java.getResourceAsStream("/$photoFileName")
@@ -79,6 +80,11 @@ class MultiplePhotosIntegrationTest {
 
         assertEquals(expectedTransactionNumber, transaction.transactionNumber,
             "[$photoFileName] Transaction number should match")
+
+        if (expectedMccCode != null) {
+            assertEquals(expectedMccCode, transaction.mccCode,
+                "[$photoFileName] MCC code should match")
+        }
 
         val expectedCurrency = when (expectedCurrencySymbol) {
             "$" -> "USD"
@@ -234,6 +240,7 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 59,
         expectedSecond = 41,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12289073601"
+        expectedTransactionNumber = "12289073601",
+        expectedMccCode = "5912"
     )
 }
