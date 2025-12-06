@@ -245,7 +245,7 @@ object TransactionParser {
 
     fun convertToFireflyDate(zonedDateTime: ZonedDateTime): String {
         // Firefly хранит все в UTC, поэтому конвертируем в UTC
-        val utcZone = ZoneId.of("UTC")
+        val utcZone = ZoneId.of("Asia/Kuala_Lumpur")
         val utcTime = zonedDateTime.withZoneSameInstant(utcZone)
 
         val result = utcTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
