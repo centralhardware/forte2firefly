@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew run:*)",
+      "Bash(./gradlew compileKotlin:*)",
+      "Bash(./gradlew cleanTest test:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api-docs.firefly-iii.org)",
+      "WebFetch(domain:docs.firefly-iii.org)",
+      "WebFetch(domain:kslog.inmo.dev)",
+      "Read(src/**)",
+      "Read(build.gradle.kts)",
+      "Read(gradle/**)",
+      "Read(README.md)",
+      "Read(CLAUDE.md)",
+      "Edit(src/**)",
+      "Write(src/**)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(*.env)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(rm:*)",
+      "Bash(git reset --hard:*)",
+      "Write(build.gradle.kts)",
+      "Edit(build.gradle.kts)"
+    ]
+  },
+  "env": {
+    "TESSDATA_PREFIX": "/opt/homebrew/share/tessdata",
+    "DYLD_LIBRARY_PATH": "/opt/homebrew/lib"
+  },
+  "model": "claude-sonnet-4-5-20250929",
+  "includeCoAuthoredBy": true
+}

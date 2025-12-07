@@ -47,7 +47,17 @@ bin/
 ### Environment ###
 .env
 *.env
-!.env.example.idea/
+!.env.example
+
+### Claude Code ###
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/commands/*.local.md
+
+### IDE ###
+.idea/
+
+### Debug Files ###
 *.txt
 *.jpg
 !src/test/resources/**/*.jpg
