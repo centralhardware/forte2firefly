@@ -39,7 +39,7 @@ dependencies {
     implementation("dev.inmo:kslog:$kslogVersion")
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 
     // Tesseract OCR
     implementation("net.sourceforge.tess4j:tess4j:$tesseractVersion")
