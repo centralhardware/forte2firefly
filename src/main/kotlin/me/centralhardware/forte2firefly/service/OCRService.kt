@@ -138,27 +138,7 @@ object OCRService {
             }
         }
     }
-    
-    // Tesseract для foreign amount (цифры + точка/запятая)
-    private val foreignAmountTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(7) // PSM 7 = Single line
-                setOcrEngineMode(1) // LSTM only
-                setVariable("tessedit_char_whitelist", "0123456789.,")
-                setVariable("classify_bln_numeric_mode", "1")
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("Foreign Amount Tesseract OCR initialized (digits + punctuation, PSM 7)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing foreign amount Tesseract", e)
-                throw IllegalStateException("Failed to initialize foreign amount Tesseract OCR.", e)
-            }
-        }
-    }
-    
+
     // Tesseract для MCC code (4 цифры)
     private val mccTesseract: Tesseract by lazy {
         Tesseract().apply {
@@ -167,11 +147,10 @@ object OCRService {
 //                setLanguage("eng")
                 setPageSegMode(10) // PSM 7 = Single line
                 setOcrEngineMode(1) // LSTM only
-                setVariable("tessedit_char_whitelist", "0123456789")
+                setVariable("tessedit_char_whitelist", ",.0123456789")
                 setVariable("classify_bln_numeric_mode", "1")
                 setVariable("load_system_dawg", "0")
                 setVariable("load_freq_dawg", "0")
-                setVariable("invert_threshold", "0.7")
                 KSLog.info("MCC Code Tesseract OCR initialized (PSM 7, digits only)")
             } catch (e: Exception) {
                 KSLog.error("Error initializing MCC Tesseract", e)
@@ -672,13 +651,15 @@ object OCRService {
                 endYPixels = 1954,
                 startXPixels = 25,
                 endXPixels = 200,
-                invert = true,  // НЕ инвертируем цвета - текст на фото черный
+                invert = false,  // НЕ инвертируем цвета - текст на фото черный
                 debugMode = debugMode, 
                 debugName = "foreign_amount"
             ) ?: return@withContext null
-            
+
+            val binarized = binarizeImage(region, threshold = 150)
+
             // Используем mccTesseract для распознавания цифр
-            val result = mccTesseract.doOCR(region).trim()
+            val result = mccTesseract.doOCR(binarized).trim()
             KSLog.info("Foreign amount OCR raw result: '$result'")
             
             // Очищаем от пробелов и заменяем запятую на точку
