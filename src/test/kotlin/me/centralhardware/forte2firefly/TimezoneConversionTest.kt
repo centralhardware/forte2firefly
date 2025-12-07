@@ -1,11 +1,11 @@
 package me.centralhardware.forte2firefly
 
 import me.centralhardware.forte2firefly.service.TransactionParser
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import kotlin.test.assertEquals
 
 class TimezoneConversionTest {
 

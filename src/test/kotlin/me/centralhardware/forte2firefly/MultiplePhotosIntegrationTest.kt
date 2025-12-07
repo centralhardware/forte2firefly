@@ -2,13 +2,12 @@ package me.centralhardware.forte2firefly
 
 import kotlinx.coroutines.runBlocking
 import me.centralhardware.forte2firefly.service.OCRService
-import me.centralhardware.forte2firefly.service.TransactionParser
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
 import java.time.ZoneId
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class MultiplePhotosIntegrationTest {
 
@@ -33,7 +32,7 @@ class MultiplePhotosIntegrationTest {
 
         assertNotNull(photoStream, "Photo $photoFileName should exist in resources")
 
-        val photoBytes = photoStream.use { it.readBytes() }
+        val photoBytes = photoStream!!.use { it.readBytes() }
 
         val transaction = try {
             OCRService.extractAllFields(photoBytes, true)
@@ -45,7 +44,7 @@ class MultiplePhotosIntegrationTest {
 
         assertNotNull(transaction, "Transaction should be extracted from $photoFileName")
 
-        assertEquals(expectedDescription, transaction.description,
+        assertEquals(expectedDescription, transaction!!.description,
             "[$photoFileName] Description should match")
 
         assertEquals(expectedAmount, transaction.amount,
