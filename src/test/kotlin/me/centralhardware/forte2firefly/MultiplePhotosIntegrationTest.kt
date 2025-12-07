@@ -34,22 +34,15 @@ class MultiplePhotosIntegrationTest {
 
         val photoBytes = photoStream.use { it.readBytes() }
 
-        val recognizedText = try {
-            OCRService.recognizeText(photoBytes)
+        val transaction = try {
+            OCRService.extractAllFields(photoBytes, true)
         } catch (e: IllegalStateException) {
             println("⚠️ Skipping test: Tesseract OCR not available")
             Assumptions.assumeTrue(false, "Tesseract OCR not available")
             return@runBlocking
         }
 
-        println("\n📝 OCR recognized text for $photoFileName:")
-        println("=".repeat(50))
-        println(recognizedText)
-        println("=".repeat(50))
-
-        val transaction = TransactionParser.parseTransaction(recognizedText)
-
-        assertNotNull(transaction, "Transaction should be parsed from $photoFileName")
+        assertNotNull(transaction, "Transaction should be extracted from $photoFileName")
 
         assertEquals(expectedDescription, transaction.description,
             "[$photoFileName] Description should match")
@@ -92,7 +85,7 @@ class MultiplePhotosIntegrationTest {
             "T", "₸" -> "KZT"
             else -> "USD"
         }
-        val detectedCurrency = TransactionParser.detectCurrency(transaction.currencySymbol)
+        val detectedCurrency = OCRService.detectCurrency(transaction.currencySymbol)
         assertEquals(expectedCurrency, detectedCurrency,
             "[$photoFileName] Currency should be detected as $expectedCurrency")
 
@@ -128,7 +121,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 8,
         expectedSecond = 17,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12444824085"
+        expectedTransactionNumber = "12444824085",
+        expectedMccCode = "5812"
     )
 
     @Test
@@ -144,7 +138,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 48,
         expectedSecond = 40,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12443316864"
+        expectedTransactionNumber = "12443316864",
+        expectedMccCode = "4121",
     )
 
     @Test
@@ -160,7 +155,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 43,
         expectedSecond = 23,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12429595311"
+        expectedTransactionNumber = "12429595311",
+        expectedMccCode = "5310",
     )
 
     @Test
@@ -176,7 +172,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 0,
         expectedSecond = 47,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12364607070"
+        expectedTransactionNumber = "12364607070",
+        expectedMccCode = "6300"
     )
 
     @Test
@@ -192,7 +189,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 0,
         expectedSecond = 12,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12305435457"
+        expectedTransactionNumber = "12305435457",
+        expectedMccCode = "4121",
     )
 
     @Test
@@ -208,7 +206,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 56,
         expectedSecond = 36,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12303874302"
+        expectedTransactionNumber = "12303874302",
+        expectedMccCode = "5734",
     )
 
     @Test
@@ -224,7 +223,8 @@ class MultiplePhotosIntegrationTest {
         expectedMinute = 7,
         expectedSecond = 18,
         expectedCardLast4 = "1293",
-        expectedTransactionNumber = "12303079205"
+        expectedTransactionNumber = "12303079205",
+        expectedMccCode = "5816",
     )
 
     @Test

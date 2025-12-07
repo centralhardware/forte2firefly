@@ -10,36 +10,31 @@ import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
-import me.centralhardware.forte2firefly.service.TransactionParser
 
 suspend fun BehaviourContext.processPhotoTransaction(
     photoBytes: ByteArray,
     chatId: Chat,
     progressPrefix: String = ""
 ): String? {
-    val text = OCRService.recognizeText(photoBytes)
-
-    if (text.isBlank()) {
-        bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать текст на фото", linkPreviewOptions = LinkPreviewOptions.Disabled)
-        return null
-    }
-
-    val forteTransaction = TransactionParser.parseTransaction(text)
+    val forteTransaction = OCRService.extractAllFields(photoBytes)
+    
     if (forteTransaction == null) {
         bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
+    
+    val transactionWithMcc = forteTransaction
 
-    val detectedCurrency = TransactionParser.detectCurrency(forteTransaction.currencySymbol)
+    val detectedCurrency = OCRService.detectCurrency(transactionWithMcc.currencySymbol)
     val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
-    val foreignAmount = forteTransaction.transactionAmount
+    val foreignAmount = transactionWithMcc.transactionAmount
     val foreignCurrency = if (foreignAmount != null) Config.defaultCurrency else null
 
     val tags = buildList {
-        if (forteTransaction.mccCode != null) {
-            add("mcc:${forteTransaction.mccCode}")
+        if (transactionWithMcc.mccCode != null) {
+            add("mcc:${transactionWithMcc.mccCode}")
         }
     }.takeIf { it.isNotEmpty() }
 
@@ -47,15 +42,15 @@ suspend fun BehaviourContext.processPhotoTransaction(
         transactions = listOf(
             TransactionSplit(
                 type = "withdrawal",
-                date = TransactionParser.convertToFireflyDate(forteTransaction.dateTime),
-                amount = forteTransaction.amount,
-                description = forteTransaction.description,
+                date = OCRService.convertToFireflyDate(transactionWithMcc.dateTime),
+                amount = transactionWithMcc.amount,
+                description = transactionWithMcc.description,
                 sourceName = sourceAccount,
-                destinationName = forteTransaction.description,
+                destinationName = transactionWithMcc.description,
                 currencyCode = detectedCurrency,
                 foreignAmount = foreignAmount,
                 foreignCurrencyCode = foreignCurrency,
-                externalId = forteTransaction.transactionNumber,
+                externalId = transactionWithMcc.transactionNumber,
                 notes = "Imported from Forte via Telegram Bot",
                 budgetName = Budget.MAIN.budgetName,
                 tags = tags
@@ -88,14 +83,14 @@ suspend fun BehaviourContext.processPhotoTransaction(
             appendLine("✅ Транзакция успешно сохранена в Firefly III")
             appendLine()
         }
-        appendLine("📝 ${forteTransaction.description}")
-        appendLine("💰 ${forteTransaction.amount} $detectedCurrency")
+        appendLine("📝 ${transactionWithMcc.description}")
+        appendLine("💰 ${transactionWithMcc.amount} $detectedCurrency")
         if (foreignAmountLine != null) {
             appendLine(foreignAmountLine)
         }
         if (progressPrefix.isEmpty()) {
             appendLine("🏦 Счёт: $sourceAccount")
-            appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
+            appendLine("📅 Дата: ${transactionWithMcc.dateTime.toLocalDateTime()}")
         }
         append("🔢 ID: ${transactionResponse.data.id}")
     }
