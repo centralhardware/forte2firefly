@@ -45,7 +45,7 @@ dependencies {
     implementation("net.sourceforge.tess4j:tess4j:$tesseractVersion")
 
     testImplementation(kotlin("test"))
-    testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation("io.mockk:mockk:1.14.7")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
