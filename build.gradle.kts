@@ -15,7 +15,7 @@ repositories {
 
 val ktorVersion = "3.3.3"
 val tgbotapiVersion = "30.0.2"
-val kslogVersion = "1.5.0"
+val kslogVersion = "1.5.2"
 val tesseractVersion = "5.12.0"
 
 dependencies {
