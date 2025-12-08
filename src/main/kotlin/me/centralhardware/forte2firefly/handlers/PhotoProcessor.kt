@@ -10,6 +10,7 @@ import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
+import me.centralhardware.forte2firefly.service.TransactionParser
 
 suspend fun BehaviourContext.processPhotoTransaction(
     photoBytes: ByteArray,
@@ -42,7 +43,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
         transactions = listOf(
             TransactionSplit(
                 type = "withdrawal",
-                date = OCRService.convertToFireflyDate(transactionWithMcc.dateTime),
+                date = TransactionParser.convertToFireflyDate(transactionWithMcc.dateTime),
                 amount = transactionWithMcc.amount,
                 description = transactionWithMcc.description,
                 sourceName = sourceAccount,

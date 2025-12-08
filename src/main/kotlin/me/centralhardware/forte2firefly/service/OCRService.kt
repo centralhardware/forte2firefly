@@ -22,298 +22,68 @@ import kotlin.math.min
 
 
 object OCRService {
-    
-    private fun getTessdataPath(): String {
-        return runCatching { Config.tessdataPrefix }.getOrNull()
-            ?: System.getenv("TESSDATA_PREFIX")
-            ?: "/usr/share/tesseract-ocr/5/tessdata/"
-    }
-    
+
     // Общий Tesseract для fallback
     private val tesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(11) // PSM 11 = Sparse text
-                setOcrEngineMode(1) // OEM 1 = LSTM only
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("General Tesseract OCR initialized")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing Tesseract", e)
-                throw IllegalStateException("Failed to initialize Tesseract OCR. Make sure Tesseract is installed.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "General",
+            pageSegMode = 11 // PSM 11 = Sparse text
+        )
     }
-    
+
     // Tesseract для merchant name (текст с заглавными буквами)
     private val merchantTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(11) // PSM 11 = Sparse text (find as much text as possible)
-                setOcrEngineMode(1)
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("Merchant Tesseract OCR initialized (PSM 11)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing merchant Tesseract", e)
-                throw IllegalStateException("Failed to initialize merchant Tesseract OCR.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "Merchant",
+            pageSegMode = 11 // PSM 11 = Sparse text (find as much text as possible)
+        )
     }
-    
+
     // Tesseract для amount (цифры + символы валют)
     private val amountTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(7) // PSM 7 = Single text line
-                setOcrEngineMode(1)
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("Amount Tesseract OCR initialized (PSM 7)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing amount Tesseract", e)
-                throw IllegalStateException("Failed to initialize amount Tesseract OCR.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "Amount",
+            pageSegMode = 7 // PSM 7 = Single text line
+        )
     }
-    
+
     // Tesseract для datetime (текст с датой и временем)
     private val datetimeTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(7) // PSM 7 = Single text line
-                setOcrEngineMode(1)
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("DateTime Tesseract OCR initialized (PSM 7)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing datetime Tesseract", e)
-                throw IllegalStateException("Failed to initialize datetime Tesseract OCR.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "DateTime",
+            pageSegMode = 7 // PSM 7 = Single text line
+        )
     }
-    
+
     // Tesseract для card number (текст с номером карты)
     private val cardTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(7) // PSM 7 = Single text line
-                setOcrEngineMode(1)
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                KSLog.info("Card Tesseract OCR initialized (PSM 7)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing card Tesseract", e)
-                throw IllegalStateException("Failed to initialize card Tesseract OCR.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "Card",
+            pageSegMode = 7 // PSM 7 = Single text line
+        )
     }
-    
+
     // Tesseract для transaction number (только цифры)
     private val transactionNumberTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-                setLanguage("eng")
-                setPageSegMode(7) // PSM 7 = Single text line
-                setOcrEngineMode(1)
-                setVariable("tessedit_char_whitelist", "0123456789")
-                setVariable("load_system_dawg", "false")
-                setVariable("load_freq_dawg", "false")
-                setVariable("classify_bln_numeric_mode", "1")
-                KSLog.info("Transaction Number Tesseract OCR initialized (digits only, PSM 7)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing transaction number Tesseract", e)
-                throw IllegalStateException("Failed to initialize transaction number Tesseract OCR.", e)
-            }
-        }
+        TesseractFactory.create(
+            name = "Transaction Number",
+            pageSegMode = 7, // PSM 7 = Single text line
+            whitelist = "0123456789",
+            additionalVariables = mapOf("classify_bln_numeric_mode" to "1")
+        )
     }
 
     // Tesseract для MCC code (4 цифры)
     private val mccTesseract: Tesseract by lazy {
-        Tesseract().apply {
-            try {
-                setDatapath(getTessdataPath())
-//                setLanguage("eng")
-                setPageSegMode(10) // PSM 7 = Single line
-                setOcrEngineMode(1) // LSTM only
-                setVariable("tessedit_char_whitelist", ",.0123456789")
-                setVariable("classify_bln_numeric_mode", "1")
-                setVariable("load_system_dawg", "0")
-                setVariable("load_freq_dawg", "0")
-                KSLog.info("MCC Code Tesseract OCR initialized (PSM 7, digits only)")
-            } catch (e: Exception) {
-                KSLog.error("Error initializing MCC Tesseract", e)
-                throw IllegalStateException("Failed to initialize MCC Tesseract OCR.", e)
-            }
-        }
-    }
-
-    private fun preprocessImage(image: BufferedImage): BufferedImage {
-        // Обрезаем верхние 15% где статус бар и UI элементы
-        val cropTopPercent = 0.10
-        val cropY = (image.height * cropTopPercent).toInt()
-        val croppedHeight = image.height - cropY
-
-        val croppedImage = image.getSubimage(0, cropY, image.width, croppedHeight)
-
-        // Увеличиваем размер в 2x для лучшего распознавания
-        val scaleFactor = 2.0
-        val scaledWidth = (croppedImage.width * scaleFactor).toInt()
-        val scaledHeight = (croppedImage.height * scaleFactor).toInt()
-
-        val scaledImage = BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB)
-        val g2d = scaledImage.createGraphics()
-
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-
-        g2d.drawImage(croppedImage, 0, 0, scaledWidth, scaledHeight, null)
-        g2d.dispose()
-
-        return scaledImage
-    }
-
-    /**
-     * Инвертирует цвета изображения (темный фон → светлый, светлый текст → темный)
-     * Это необходимо для лучшего распознавания белого текста на темном фоне
-     */
-    private fun invertColors(image: BufferedImage): BufferedImage {
-        val inverted = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
-        for (y in 0 until image.height) {
-            for (x in 0 until image.width) {
-                val rgb = image.getRGB(x, y)
-                val r = 255 - ((rgb shr 16) and 0xFF)
-                val g = 255 - ((rgb shr 8) and 0xFF)
-                val b = 255 - (rgb and 0xFF)
-                val invertedRgb = (r shl 16) or (g shl 8) or b
-                inverted.setRGB(x, y, invertedRgb)
-            }
-        }
-        return inverted
-    }
-    
-    /**
-     * Применяет бинаризацию к изображению (превращает в чёрно-белое)
-     * Это улучшает распознавание текста, особенно для цифр
-     */
-    private fun binarizeImage(image: BufferedImage, threshold: Int = 128): BufferedImage {
-        val binarized = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
-        for (y in 0 until image.height) {
-            for (x in 0 until image.width) {
-                val rgb = image.getRGB(x, y)
-                val r = (rgb shr 16) and 0xFF
-                val g = (rgb shr 8) and 0xFF
-                val b = rgb and 0xFF
-                val gray = (r + g + b) / 3
-                val binary = if (gray > threshold) 255 else 0
-                val binaryRgb = (binary shl 16) or (binary shl 8) or binary
-                binarized.setRGB(x, y, binaryRgb)
-            }
-        }
-        return binarized
-    }
-    
-    /**
-     * Извлекает и обрабатывает регион изображения для OCR (с абсолютными пикселями)
-     */
-    private fun extractAndProcessRegion(
-        image: BufferedImage,
-        startYPixels: Int,
-        endYPixels: Int,
-        startXPixels: Int = 0,
-        endXPixels: Int = -1,
-        invert: Boolean = true,
-        debugMode: Boolean = false,
-        debugName: String = "region"
-    ): BufferedImage? {
-        return try {
-            val startY = startYPixels
-            val endY = endYPixels
-            val startX = startXPixels
-            val endX = if (endXPixels == -1) image.width else endXPixels
-            
-            val regionHeight = endY - startY
-            val regionWidth = endX - startX
-            
-            if (regionHeight <= 0 || regionWidth <= 0) {
-                KSLog.info("Invalid region dimensions for $debugName: ${regionWidth}x$regionHeight")
-                return null
-            }
-            
-            KSLog.debug("Extracting $debugName region: X=$startX-$endX, Y=$startY-$endY (${regionWidth}x${regionHeight}px)")
-            
-            val region = image.getSubimage(startX, startY, regionWidth, regionHeight)
-            
-            // Масштабирование
-            val scaledWidth = (region.width * 1)
-            val scaledHeight = (region.height * 1)
-            
-            val scaledRegion = BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB)
-            val g2d = scaledRegion.createGraphics()
-            
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            
-            g2d.drawImage(region, 0, 0, scaledWidth, scaledHeight, null)
-            g2d.dispose()
-            
-            // Инверсия (если нужна)
-            val result = if (invert) invertColors(scaledRegion) else scaledRegion
-            
-            if (debugMode) {
-                val debugDir = File("debug_ocr")
-                debugDir.mkdirs()
-                ImageIO.write(result, "png", File(debugDir, "${debugName}_processed.png"))
-                KSLog.info("Saved $debugName region to debug_ocr/${debugName}_processed.png")
-            }
-            
-            result
-        } catch (e: Exception) {
-            KSLog.error("Error extracting $debugName region", e)
-            null
-        }
-    }
-
-    /**
-     * Извлекает регион изображения, где предположительно находится MCC код
-     * На чеках Forte MCC код обычно находится в нижней части изображения
-     * Позиция зависит от наличия foreign amount
-     */
-    private fun extractMccRegion(image: BufferedImage, hasForeignAmount: Boolean, debugMode: Boolean = false): BufferedImage? {
-        // MCC находится в разных позициях в зависимости от наличия foreign amount
-        val (startY, endY) = if (hasForeignAmount) {
-            // С foreign amount: MCC ниже
-            Pair(2065, 2105)
-        } else {
-            // Без foreign amount: MCC выше (примерно на месте где был бы foreign amount)
-            Pair(1950, 1990)
-        }
-        
-        // X координаты одинаковые: X=25-200px (с запасом чтобы захватить все 4 цифры)
-        return extractAndProcessRegion(
-            image, 
-            startYPixels = startY, 
-            endYPixels = endY,
-            startXPixels = 25,
-            endXPixels = 200,
-            invert = true,
-            debugMode = debugMode, 
-            debugName = "mcc"
+        TesseractFactory.create(
+            name = "MCC Code",
+            pageSegMode = 10, // PSM 10 = Single character
+            language = "", // No language for numeric-only
+            whitelist = ",.0123456789",
+            additionalVariables = mapOf("classify_bln_numeric_mode" to "1")
         )
     }
+
     
     /**
      * Комплексное извлечение всех полей транзакции с использованием region-based OCR
@@ -437,19 +207,6 @@ object OCRService {
             null
         }
     }
-    
-    /**
-     * Конвертирует ZonedDateTime в формат для Firefly III
-     */
-    fun convertToFireflyDate(zonedDateTime: ZonedDateTime): String {
-        val utcZone = java.time.ZoneId.of("UTC")
-        val utcTime = zonedDateTime.withZoneSameInstant(utcZone)
-        val adjustedTime = utcTime.plusHours(1)
-        val result = adjustedTime.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-        KSLog.debug("Converted date: ${zonedDateTime.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)} (${zonedDateTime.zone}) -> ${utcTime.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)} (UTC) -> $result (UTC+1h for Firefly)")
-        return result
-    }
-    
     /**
      * Определяет код валюты по символу
      */
@@ -477,11 +234,11 @@ object OCRService {
             ?: throw IllegalArgumentException("Could not read image from bytes")
 
         // Применяем preprocessing
-        val preprocessedImage = preprocessImage(originalImage)
+        val preprocessedImage = ImagePreprocessor.preprocessImage(originalImage)
 
         val result = tesseract.doOCR(preprocessedImage)
 
-        KSLog.info("OCR with preprocessing completed. Text length: ${result.length} characters")
+        KSLog.info("OCR with preprocessing completed. Text length: ${result?.length ?: 0} characters")
         KSLog.debug("OCR result: $result")
 
         result.trim()
@@ -495,9 +252,12 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // Merchant: 586-742px (from Label Studio markup)
-            val region = extractAndProcessRegion(
-                originalImage, 586, 742, invert = true, debugMode = debugMode, debugName = "merchant"
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.MERCHANT,
+                invert = true,
+                debugMode = debugMode,
+                debugName = "merchant"
             ) ?: return@withContext null
             
             val result = merchantTesseract.doOCR(region).trim()
@@ -525,9 +285,12 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // Amount: 714-846px (from Label Studio markup)
-            val region = extractAndProcessRegion(
-                originalImage, 714, 846, invert = true, debugMode = debugMode, debugName = "amount"
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.AMOUNT,
+                invert = true,
+                debugMode = debugMode,
+                debugName = "amount"
             ) ?: return@withContext null
             
             val result = amountTesseract.doOCR(region).trim()
@@ -558,9 +321,12 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // DateTime: 1284-1396px (from Label Studio markup)
-            val region = extractAndProcessRegion(
-                originalImage, 1284, 1396, invert = true, debugMode = debugMode, debugName = "datetime"
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.DATE_TIME,
+                invert = true,
+                debugMode = debugMode,
+                debugName = "datetime"
             ) ?: return@withContext null
             
             val result = datetimeTesseract.doOCR(region).trim()
@@ -581,9 +347,12 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // Card: 1485-1581px (from Label Studio markup)
-            val region = extractAndProcessRegion(
-                originalImage, 1485, 1581, invert = true, debugMode = debugMode, debugName = "card"
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.CARD,
+                invert = true,
+                debugMode = debugMode,
+                debugName = "card"
             ) ?: return@withContext null
             
             val result = cardTesseract.doOCR(region).trim()
@@ -604,14 +373,16 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // Transaction Number: 1661-1769px (from Label Studio markup)
-            val region = extractAndProcessRegion(
-                originalImage, 1661, 1769,
-                 invert = true, debugMode = debugMode, debugName = "transaction_number"
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.TRANSACTION_NUMBER,
+                invert = true,
+                debugMode = debugMode,
+                debugName = "transaction_number"
             ) ?: return@withContext null
             
             // Применяем бинаризацию для улучшения распознавания цифр
-            val binarized = binarizeImage(region, threshold = 128)
+            val binarized = ImagePreprocessor.binarizeImage(region, threshold = 128)
             
             if (debugMode) {
                 val debugDir = File("debug_ocr")
@@ -644,19 +415,22 @@ object OCRService {
             val inputStream = ByteArrayInputStream(photoBytes)
             val originalImage: BufferedImage = ImageIO.read(inputStream) ?: return@withContext null
             
-            // Foreign Amount: 1850-1954px 
-            val region = extractAndProcessRegion(
-                originalImage, 
-                startYPixels = 1850, 
-                endYPixels = 1954,
-                startXPixels = 25,
-                endXPixels = 200,
+            val region = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.FOREIGN_AMOUNT,
                 invert = false,  // НЕ инвертируем цвета - текст на фото черный
-                debugMode = debugMode, 
+                debugMode = debugMode,
                 debugName = "foreign_amount"
             ) ?: return@withContext null
 
-            val binarized = binarizeImage(region, threshold = 150)
+            val binarized = ImagePreprocessor.binarizeImage(region, threshold = 150)
+
+            if (debugMode) {
+                val debugDir = File("debug_ocr")
+                debugDir.mkdirs()
+                ImageIO.write(binarized, "png", File(debugDir, "foreign_amount_binarized.png"))
+                KSLog.info("Saved binarized foreign amount to debug_ocr/foreign_amount_binarized.png")
+            }
 
             // Используем mccTesseract для распознавания цифр
             val result = mccTesseract.doOCR(binarized).trim()
@@ -697,13 +471,9 @@ object OCRService {
             }
             
             // Сначала пробуем новый формат: MCC код идет сразу после transaction number
-            // Регион: Y=960-1010px (MCC код "5734", с учетом crop 10% = 157px)
-            val newFormatRegion = extractAndProcessRegion(
+            val newFormatRegion = ImagePreprocessor.extractAndProcessRegion(
                 originalImage,
-                startYPixels = 960,
-                endYPixels = 1010,
-                startXPixels = 25,
-                endXPixels = 200,
+                ReceiptRegionConfig.MCC_NEW_FORMAT,
                 invert = true,  // текст светлый на темном фоне
                 debugMode = debugMode,
                 debugName = "mcc_new_format"
@@ -724,11 +494,13 @@ object OCRService {
             }
             
             // Если не нашли в новом формате, пробуем старый регион
-            val mccRegion = extractMccRegion(originalImage, hasForeignAmount, debugMode)
-            if (mccRegion == null) {
-                KSLog.info("Could not extract MCC region")
-                return@withContext null
-            }
+            val mccRegion = ImagePreprocessor.extractAndProcessRegion(
+                originalImage,
+                ReceiptRegionConfig.getMccOldFormatRegion(hasForeignAmount),
+                invert = true,
+                debugMode = debugMode,
+                debugName = "mcc"
+            ) ?: return@withContext null
             
             // Сохраняем извлеченный регион для отладки
             if (debugMode) {
@@ -738,7 +510,7 @@ object OCRService {
             }
             
             // Применяем бинаризацию с оптимальным threshold для улучшения распознавания
-            val binarized = binarizeImage(mccRegion, threshold = 150)
+            val binarized = ImagePreprocessor.binarizeImage(mccRegion, threshold = 150)
             
             if (debugMode) {
                 val debugDir = File("debug_ocr")

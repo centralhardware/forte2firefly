@@ -45,6 +45,8 @@ dependencies {
     implementation("net.sourceforge.tess4j:tess4j:$tesseractVersion")
 
     testImplementation(kotlin("test"))
+    testImplementation("io.mockk:mockk:1.13.13")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
 kotlin {
@@ -54,6 +56,7 @@ kotlin {
 tasks.test {
     useJUnitPlatform()
     systemProperty("jna.library.path", "/opt/homebrew/lib")
+    systemProperty("java.awt.headless", "true")
     environment("TESSDATA_PREFIX", "/opt/homebrew/share/tessdata")
 }
 
