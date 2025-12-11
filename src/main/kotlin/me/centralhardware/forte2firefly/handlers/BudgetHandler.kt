@@ -43,6 +43,7 @@ fun BehaviourContext.registerBudgetHandler() {
 
             val updatedSplit = currentSplit.copy(
                 notes = updatedNotes,
+                budgetId = null,
                 budgetName = newBudget.budgetName
             )
 
