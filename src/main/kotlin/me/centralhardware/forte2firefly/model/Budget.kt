@@ -3,7 +3,8 @@ package me.centralhardware.forte2firefly.model
 enum class Budget(val budgetName: String, val emoji: String) {
     MAIN("main", "💰"),
     TRAVEL("travel", "✈️"),
-    STUDY("study", "📚");
+    STUDY("study", "📚"),
+    SUBSCRIPTIONS("subscriptions", "📱");
 
     fun getNext(): Budget {
         val values = Budget.values()
