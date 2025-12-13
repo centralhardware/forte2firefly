@@ -55,48 +55,40 @@ fun BehaviourContext.registerMediaHandler() {
     onVisualGallery { gallery ->
         val messages = gallery.group
         val totalCount = messages.size
-        var successCount = 0
-        var failedCount = 0
 
-        messages.forEachIndexed { index, msg ->
-            val currentNumber = index + 1
-            val progress = "[$currentNumber/$totalCount] "
-
-            try {
-                val photoBytes = bot.downloadFile(msg.content)
-                val msgChat = msg.sourceMessage.chat
-
-                val transactionId = processPhotoTransaction(
-                    photoBytes = photoBytes,
-                    chatId = msgChat,
-                    progressPrefix = progress
-                )
-                if (transactionId != null) {
-                    successCount++
-                } else {
-                    failedCount++
-                }
-
-            } catch (e: Exception) {
-                KSLog.error("Error processing photo $progress from gallery", e)
-                failedCount++
-                sendMessage(msg.sourceMessage.chat, "${progress}❌ Ошибка: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
-            }
+        // Обрабатываем только 2 или более фотографий как split транзакцию
+        if (totalCount < 2) {
+            sendMessage(
+                messages.first().sourceMessage.chat,
+                "⚠️ Для создания split транзакции необходимо отправить минимум 2 фотографии.\nПолучено: $totalCount",
+                linkPreviewOptions = LinkPreviewOptions.Disabled
+            )
+            return@onVisualGallery
         }
 
-        val finalMessage = buildString {
-            appendLine("🏁 Обработка группы фото завершена")
-            appendLine()
-            appendLine("📊 Статистика:")
-            appendLine("✅ Успешно: $successCount")
-            if (failedCount > 0) {
-                appendLine("❌ Ошибок: $failedCount")
-            }
-            append("📈 Всего: $totalCount")
-        }
+        try {
+            sendMessage(
+                messages.first().sourceMessage.chat,
+                "📸 Получено $totalCount фотографий, создаю split транзакцию...",
+                linkPreviewOptions = LinkPreviewOptions.Disabled
+            )
 
-        if (messages.isNotEmpty()) {
-            sendMessage(messages.first().sourceMessage.chat, finalMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
+            // Загружаем все фотографии
+            val photoBytes = messages.map { bot.downloadFile(it.content) }
+            val chatId = messages.first().sourceMessage.chat
+
+            processSplitTransaction(
+                photoBytes = photoBytes,
+                chatId = chatId
+            )
+
+        } catch (e: Exception) {
+            KSLog.error("Error processing split transaction from gallery", e)
+            sendMessage(
+                messages.first().sourceMessage.chat,
+                "❌ Ошибка при создании split транзакции: ${e.message ?: "Неизвестная ошибка"}",
+                linkPreviewOptions = LinkPreviewOptions.Disabled
+            )
         }
     }
 }

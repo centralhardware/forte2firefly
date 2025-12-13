@@ -31,24 +31,28 @@ fun BehaviourContext.registerBudgetHandler() {
             val newBudget = currentBudget.getNext()
 
             val transaction = FireflyApiClient.getTransaction(transactionId)
-            val currentSplit = transaction.data.attributes.transactions.first()
+            val allSplits = transaction.data.attributes.transactions
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
             val changeLog = "[$timestamp] Бюджет изменен: ${currentBudget.budgetName} → ${newBudget.budgetName}"
-            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
-                changeLog
-            } else {
-                "${currentSplit.notes}\n$changeLog"
+
+            // Обновляем ВСЕ splits в транзакции (для поддержки split транзакций)
+            val updatedSplits = allSplits.map { split ->
+                val updatedNotes = if (split.notes.isNullOrBlank()) {
+                    changeLog
+                } else {
+                    "${split.notes}\n$changeLog"
+                }
+
+                split.copy(
+                    notes = updatedNotes,
+                    budgetId = null,
+                    budgetName = newBudget.budgetName
+                )
             }
 
-            val updatedSplit = currentSplit.copy(
-                notes = updatedNotes,
-                budgetId = null,
-                budgetName = newBudget.budgetName
-            )
-
             val updateRequest = TransactionRequest(
-                transactions = listOf(updatedSplit)
+                transactions = updatedSplits
             )
 
             FireflyApiClient.updateTransaction(transactionId, updateRequest)
