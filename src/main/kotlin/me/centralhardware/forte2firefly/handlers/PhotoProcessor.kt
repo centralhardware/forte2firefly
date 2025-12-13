@@ -54,7 +54,20 @@ suspend fun BehaviourContext.processSplitTransaction(
         createTransactionSplit(transaction, currency, sourceAccount)
     }
 
-    val transactionRequest = TransactionRequest(transactions = splits)
+    // Формируем заголовок группы из описаний всех транзакций
+    val descriptions = currenciesAndAccounts.map { (transaction, _, _) -> transaction.description }
+    val groupTitle = if (descriptions.toSet().size == 1) {
+        // Все описания одинаковые - используем одно
+        descriptions.first()
+    } else {
+        // Разные описания - нумеруем каждое
+        descriptions.mapIndexed { index, desc -> "${index + 1}. $desc" }.joinToString(" | ")
+    }
+
+    val transactionRequest = TransactionRequest(
+        groupTitle = groupTitle,
+        transactions = splits
+    )
 
     // Создаем split транзакцию в Firefly
     val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)

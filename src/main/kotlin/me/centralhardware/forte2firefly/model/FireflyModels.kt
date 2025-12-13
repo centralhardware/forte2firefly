@@ -8,6 +8,7 @@ data class TransactionRequest(
     @SerialName("error_if_duplicate_hash") val errorIfDuplicateHash: Boolean = true,
     @SerialName("apply_rules") val applyRules: Boolean = true,
     @SerialName("fire_webhooks") val fireWebhooks: Boolean = true,
+    @SerialName("group_title") val groupTitle: String? = null,
     val transactions: List<TransactionSplit>
 )
 
