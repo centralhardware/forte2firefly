@@ -82,6 +82,9 @@ jib {
             "-XX:MaxRAMPercentage=75.0",
             "--enable-native-access=ALL-UNNAMED"
         )
+        environment = mapOf(
+            "TZ" to "Asia/Kuala_Lumpur"
+        )
         creationTime = "USE_CURRENT_TIMESTAMP"
         labels = mapOf(
             "org.opencontainers.image.source" to (System.getenv("GITHUB_SERVER_URL")?.let { server ->
