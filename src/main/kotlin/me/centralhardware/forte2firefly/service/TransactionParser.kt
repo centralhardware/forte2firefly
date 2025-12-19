@@ -9,11 +9,9 @@ import java.time.format.DateTimeFormatter
 object TransactionParser {
 
     fun convertToFireflyDate(zonedDateTime: ZonedDateTime): String {
-        // Конвертируем из Asia/Almaty в UTC
         val utcZone = ZoneId.of("UTC")
         val utcTime = zonedDateTime.withZoneSameInstant(utcZone)
         
-        // Добавляем 1 час, так как Firefly показывает на 1 час раньше
         val adjustedTime = utcTime.plusHours(1)
         
         val result = adjustedTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)

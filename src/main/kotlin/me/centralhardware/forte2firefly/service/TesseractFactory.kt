@@ -31,14 +31,11 @@ object TesseractFactory {
                 setPageSegMode(pageSegMode)
                 setOcrEngineMode(ocrEngineMode)
 
-                // Общие переменные для всех конфигураций
                 setVariable("load_system_dawg", "false")
                 setVariable("load_freq_dawg", "false")
 
-                // Whitelist если указан
                 whitelist?.let { setVariable("tessedit_char_whitelist", it) }
 
-                // Дополнительные переменные
                 additionalVariables.forEach { (key, value) ->
                     setVariable(key, value)
                 }
