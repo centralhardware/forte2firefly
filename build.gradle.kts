@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.2.21"
-    kotlin("plugin.serialization") version "2.2.21"
+    kotlin("jvm") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.0"
     id("com.google.cloud.tools.jib") version "3.5.1"
     application
 }
@@ -50,7 +50,7 @@ dependencies {
 }
 
 kotlin {
-    jvmToolchain(24)
+    jvmToolchain(25)
 }
 
 tasks.test {
@@ -71,14 +71,13 @@ tasks.run.configure {
 
 jib {
     from {
-        image = System.getenv("JIB_FROM_IMAGE") ?: "eclipse-temurin:24-jre"
+        image = System.getenv("JIB_FROM_IMAGE") ?: "eclipse-temurin:25-jre"
     }
     to {
     }
     container {
         mainClass = "me.centralhardware.forte2firefly.MainKt"
         jvmFlags = listOf(
-            "-XX:+UseContainerSupport",
             "-XX:MaxRAMPercentage=75.0",
             "--enable-native-access=ALL-UNNAMED"
         )
