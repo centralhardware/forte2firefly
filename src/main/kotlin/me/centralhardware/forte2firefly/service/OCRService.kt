@@ -329,7 +329,6 @@ object OCRService {
     }
 
     private fun filterMccFromForeignAmount(foreignAmount: String?): String? {
-        // Если foreignAmount это MCC код (4+ цифр), возвращаем null
         return if (foreignAmount?.matches(Regex("^\\d{4,}$")) == true) null else foreignAmount
     }
 

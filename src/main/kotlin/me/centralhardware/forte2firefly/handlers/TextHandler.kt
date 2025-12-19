@@ -75,9 +75,7 @@ private suspend fun BehaviourContext.handleTransactionUpdate(
         val currentSplit = currentTransaction.data.attributes.transactions.first()
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
-        // Determine if this is an amount update or description update
         if (newAmount != null && newAmount > 0) {
-            // Update amount
             bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
             val oldAmount = currentSplit.amount

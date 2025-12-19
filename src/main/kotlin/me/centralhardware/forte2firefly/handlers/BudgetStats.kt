@@ -75,7 +75,6 @@ suspend fun BehaviourContext.generateBudgetStats(chatId: Chat) {
 
         val budgetAmount = budgetLimit?.amount?.toDoubleOrNull() ?: 0.0
         
-        // Среднее за прошедшие дни (без сегодня)
         val spentBeforeToday = totalSpent - todaySpent
         val avgPerDay = if (daysPassed > 0) spentBeforeToday / daysPassed else 0.0
         val normalPerDay = if (daysInMonth > 0 && budgetAmount > 0) budgetAmount / daysInMonth else 0.0

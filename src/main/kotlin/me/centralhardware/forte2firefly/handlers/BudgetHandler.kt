@@ -36,7 +36,6 @@ fun BehaviourContext.registerBudgetHandler() {
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
             val changeLog = "[$timestamp] Бюджет изменен: ${currentBudget.budgetName} → ${newBudget.budgetName}"
 
-            // Обновляем ВСЕ splits в транзакции (для поддержки split транзакций)
             val updatedSplits = allSplits.map { split ->
                 val updatedNotes = if (split.notes.isNullOrBlank()) {
                     changeLog

@@ -56,7 +56,6 @@ fun BehaviourContext.registerMediaHandler() {
         val messages = gallery.group
         val totalCount = messages.size
 
-        // Обрабатываем только 2 или более фотографий как split транзакцию
         if (totalCount < 2) {
             sendMessage(
                 messages.first().sourceMessage.chat,
@@ -73,7 +72,6 @@ fun BehaviourContext.registerMediaHandler() {
                 linkPreviewOptions = LinkPreviewOptions.Disabled
             )
 
-            // Загружаем все фотографии
             val photoBytes = messages.map { bot.downloadFile(it.content) }
             val chatId = messages.first().sourceMessage.chat
 

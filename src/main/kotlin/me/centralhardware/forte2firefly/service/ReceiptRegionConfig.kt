@@ -6,7 +6,7 @@ object ReceiptRegionConfig {
         val startY: Int,
         val endY: Int,
         val startX: Int = 0,
-        val endX: Int = -1 // -1 означает "до конца изображения"
+        val endX: Int = -1
     )
 
     val MERCHANT = Region(startY = 586, endY = 742)

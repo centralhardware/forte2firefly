@@ -18,7 +18,6 @@ suspend fun BehaviourContext.processSplitTransaction(
     photoBytes: List<ByteArray>,
     chatId: Chat
 ) {
-    // Обрабатываем все фотографии через OCR
     val transactions = photoBytes.mapIndexed { index, bytes ->
         val transaction = OCRService.extractAllFields(bytes)
         if (transaction == null) {
@@ -31,14 +30,12 @@ suspend fun BehaviourContext.processSplitTransaction(
         transaction
     }
 
-    // Проверяем, что все транзакции успешно распознаны
     if (transactions.any { it == null }) {
         return
     }
 
     val validTransactions = transactions.filterNotNull()
 
-    // Определяем валюты и счета для всех транзакций
     val currenciesAndAccounts = validTransactions.map { transaction ->
         val currency = CurrencyService.detectCurrency(transaction.currencySymbol)
         val account = Config.currencyAccounts[currency]
@@ -46,22 +43,16 @@ suspend fun BehaviourContext.processSplitTransaction(
         Triple(transaction, currency, account)
     }
 
-    // Для split транзакции source account должен быть одинаковым
-    // Используем счет из первой транзакции
     val sourceAccount = currenciesAndAccounts.first().third
 
-    // Создаем splits для всех транзакций
     val splits = currenciesAndAccounts.map { (transaction, currency, _) ->
         createTransactionSplit(transaction, currency, sourceAccount)
     }
 
-    // Формируем заголовок группы из описаний всех транзакций
     val descriptions = currenciesAndAccounts.map { (transaction, _, _) -> transaction.description }
     val groupTitle = if (descriptions.toSet().size == 1) {
-        // Все описания одинаковые - используем одно
         descriptions.first()
     } else {
-        // Разные описания - нумеруем каждое
         descriptions.mapIndexed { index, desc -> "${index + 1}. $desc" }.joinToString(" | ")
     }
 
@@ -70,11 +61,9 @@ suspend fun BehaviourContext.processSplitTransaction(
         transactions = splits
     )
 
-    // Создаем split транзакцию в Firefly
     val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)
     val transactionId = transactionResponse.data.id
 
-    // Прикрепляем все фотографии к транзакции
     val journalIds = transactionResponse.data.attributes.transactions.mapNotNull { it.transactionJournalId }
 
     photoBytes.forEachIndexed { index, bytes ->
@@ -90,7 +79,6 @@ suspend fun BehaviourContext.processSplitTransaction(
         }
     }
 
-    // Формируем сообщение об успехе
     val successMessage = buildString {
         appendLine("✅ Split транзакция успешно создана в Firefly III")
         appendLine()

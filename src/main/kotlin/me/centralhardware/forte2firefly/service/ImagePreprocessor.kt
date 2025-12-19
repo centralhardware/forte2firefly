@@ -12,14 +12,12 @@ import javax.imageio.ImageIO
 object ImagePreprocessor {
 
     fun preprocessImage(image: BufferedImage): BufferedImage {
-        // Обрезаем верхние 10% где статус бар и UI элементы
         val cropTopPercent = 0.10
         val cropY = (image.height * cropTopPercent).toInt()
         val croppedHeight = image.height - cropY
 
         val croppedImage = image.getSubimage(0, cropY, image.width, croppedHeight)
 
-        // Увеличиваем размер в 2x для лучшего распознавания
         val scaledWidth = croppedImage.width * 2
         val scaledHeight = croppedImage.height * 2
 
@@ -70,13 +68,11 @@ object ImagePreprocessor {
         for (y in 0 until image.height) {
             for (x in 0 until image.width) {
                 val rgb = image.getRGB(x, y)
-                // Вычисляем grayscale значение
                 val r = (rgb shr 16) and 0xFF
                 val g = (rgb shr 8) and 0xFF
                 val b = rgb and 0xFF
                 val gray = (r + g + b) / 3
 
-                // Применяем порог
                 val binaryValue = if (gray > threshold) 255 else 0
                 val binaryRgb = (binaryValue shl 16) or (binaryValue shl 8) or binaryValue
                 binary.setRGB(x, y, binaryRgb)
@@ -112,10 +108,8 @@ object ImagePreprocessor {
 
             KSLog.debug("Extracting $debugName region: X=$startX-$endX, Y=$startY-$endY (${regionWidth}x${regionHeight}px)")
 
-            // Извлекаем регион
             val region = image.getSubimage(startX, startY, regionWidth, regionHeight)
 
-            // Инверсия (если нужна)
             val result = if (invert) invertColors(region) else region
 
             if (debugMode) {
