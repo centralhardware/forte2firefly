@@ -9,6 +9,7 @@ import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.ForteTransaction
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
+import me.centralhardware.forte2firefly.service.CurrencyService
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
@@ -39,7 +40,7 @@ suspend fun BehaviourContext.processSplitTransaction(
 
     // Определяем валюты и счета для всех транзакций
     val currenciesAndAccounts = validTransactions.map { transaction ->
-        val currency = OCRService.detectCurrency(transaction.currencySymbol)
+        val currency = CurrencyService.detectCurrency(transaction.currencySymbol)
         val account = Config.currencyAccounts[currency]
             ?: throw RuntimeException("No account configured for currency $currency")
         Triple(transaction, currency, account)
@@ -157,7 +158,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
     
     val transactionWithMcc = forteTransaction
 
-    val detectedCurrency = OCRService.detectCurrency(transactionWithMcc.currencySymbol)
+    val detectedCurrency = CurrencyService.detectCurrency(transactionWithMcc.currencySymbol)
     val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 

@@ -1,6 +1,7 @@
 package me.centralhardware.forte2firefly
 
 import kotlinx.coroutines.runBlocking
+import me.centralhardware.forte2firefly.service.CurrencyService
 import me.centralhardware.forte2firefly.service.OCRService
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -88,7 +89,7 @@ class MultiplePhotosIntegrationTest {
             "T", "₸" -> "KZT"
             else -> "USD"
         }
-        val detectedCurrency = OCRService.detectCurrency(transaction.currencySymbol)
+        val detectedCurrency = CurrencyService.detectCurrency(transaction.currencySymbol)
         assertEquals(expectedCurrency, detectedCurrency,
             "[$photoFileName] Currency should be detected as $expectedCurrency")
 
