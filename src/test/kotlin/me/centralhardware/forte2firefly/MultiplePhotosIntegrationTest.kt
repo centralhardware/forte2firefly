@@ -256,4 +256,22 @@ class MultiplePhotosIntegrationTest {
         expectedTransactionNumber = "12289073601",
         expectedMccCode = "5912"
     )
+
+    @Test
+    fun `test img`() = testPhoto(
+        photoFileName = "img.png",
+        expectedDescription = "UBR* PENDING.UBER.COM",
+        expectedAmount = "13.48",
+        expectedForeignAmount = "4128.47",
+        expectedCurrencySymbol = "$",
+        expectedYear = 2025,
+        expectedMonth = 12,
+        expectedDay = 20,
+        expectedHour = 22,
+        expectedMinute = 7,
+        expectedSecond = 8,
+        expectedCardLast4 = "1293",
+        expectedTransactionNumber = "12601751386",
+        expectedMccCode = "4121"
+    )
 }

@@ -19,7 +19,7 @@ object ReceiptRegionConfig {
 
     val TRANSACTION_NUMBER = Region(startY = 1661, endY = 1769)
 
-    val FOREIGN_AMOUNT = Region(startY = 1850, endY = 1954, startX = 25, endX = 200)
+    val FOREIGN_AMOUNT = Region(startY = 1850, endY = 1954, startX = 25, endX = 280)
 
     val MCC_NEW_FORMAT = Region(startY = 960, endY = 1010, startX = 25, endX = 200)
 

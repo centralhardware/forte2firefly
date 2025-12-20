@@ -209,7 +209,9 @@ object OCRService {
         val result = recognizeField(image, OcrFieldConfig.ForeignAmount, debugMode)
             ?: return null
 
-        val cleaned = result.replace(Regex("\\s+"), "").replace(",", ".")
+        val cleaned = result.replace(Regex("\\s+"), "")
+            .replace(",", ".")
+            .replace(Regex("[.,]+$"), "")
         return cleaned.ifEmpty { null }
             .also { KSLog.info("Foreign amount cleaned: '$it'") }
     }
