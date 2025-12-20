@@ -7,14 +7,13 @@ enum class Budget(val budgetName: String, val emoji: String) {
     SUBSCRIPTIONS("subscriptions", "📱");
 
     fun getNext(): Budget {
-        val values = Budget.values()
-        val currentIndex = values.indexOf(this)
-        return values[(currentIndex + 1) % values.size]
+        val currentIndex = entries.indexOf(this)
+        return entries[(currentIndex + 1) % entries.size]
     }
 
     companion object {
         fun fromName(name: String): Budget? {
-            return values().find { it.budgetName == name }
+            return entries.find { it.budgetName == name }
         }
 
         fun fromNameOrDefault(name: String?): Budget {

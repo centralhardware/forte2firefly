@@ -1,16 +1,14 @@
 package me.centralhardware.forte2firefly.handlers
 
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
-import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onDocument
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onPhoto
 import dev.inmo.tgbotapi.extensions.behaviour_builder.triggers_handling.onVisualGallery
-import me.centralhardware.forte2firefly.service.OCRService
-import me.centralhardware.forte2firefly.service.TransactionParser
-import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.error
+import dev.inmo.tgbotapi.types.LinkPreviewOptions
 
 fun BehaviourContext.registerMediaHandler() {
     onPhoto { message ->

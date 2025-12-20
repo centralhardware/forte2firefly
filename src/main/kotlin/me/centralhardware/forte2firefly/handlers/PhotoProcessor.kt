@@ -46,7 +46,7 @@ suspend fun BehaviourContext.processSplitTransaction(
     val sourceAccount = currenciesAndAccounts.first().third
 
     val splits = currenciesAndAccounts.map { (transaction, currency, _) ->
-        createTransactionSplit(transaction, currency, sourceAccount)
+        transaction.toTransactionSplit(currency, sourceAccount)
     }
 
     val descriptions = currenciesAndAccounts.map { (transaction, _, _) -> transaction.description }
@@ -101,31 +101,25 @@ suspend fun BehaviourContext.processSplitTransaction(
     )
 }
 
-private fun createTransactionSplit(
-    forteTransaction: ForteTransaction,
+private fun ForteTransaction.toTransactionSplit(
     detectedCurrency: String,
     sourceAccount: String
 ): TransactionSplit {
-    val foreignAmount = forteTransaction.transactionAmount
-    val foreignCurrency = if (foreignAmount != null) Config.defaultCurrency else null
+    val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
 
-    val tags = buildList {
-        if (forteTransaction.mccCode != null) {
-            add("mcc:${forteTransaction.mccCode}")
-        }
-    }.takeIf { it.isNotEmpty() }
+    val tags = mccCode?.let { listOf("mcc:$it") }
 
     return TransactionSplit(
         type = "withdrawal",
-        date = TransactionParser.convertToFireflyDate(forteTransaction.dateTime),
-        amount = forteTransaction.amount,
-        description = forteTransaction.description,
+        date = TransactionParser.convertToFireflyDate(dateTime),
+        amount = amount,
+        description = description,
         sourceName = sourceAccount,
-        destinationName = forteTransaction.description,
+        destinationName = description,
         currencyCode = detectedCurrency,
-        foreignAmount = foreignAmount,
+        foreignAmount = transactionAmount,
         foreignCurrencyCode = foreignCurrency,
-        externalId = forteTransaction.transactionNumber,
+        externalId = transactionNumber,
         notes = null,
         budgetName = Budget.MAIN.budgetName,
         tags = tags
@@ -137,46 +131,19 @@ suspend fun BehaviourContext.processPhotoTransaction(
     chatId: Chat,
     progressPrefix: String = ""
 ): String? {
-    val forteTransaction = OCRService.extractAllFields(photoBytes)
-    
-    if (forteTransaction == null) {
+    val transaction = OCRService.extractAllFields(photoBytes)
+
+    if (transaction == null) {
         bot.sendMessage(chatId, "$progressPrefix⚠️ Не удалось распознать данные транзакции", linkPreviewOptions = LinkPreviewOptions.Disabled)
         return null
     }
-    
-    val transactionWithMcc = forteTransaction
 
-    val detectedCurrency = CurrencyService.detectCurrency(transactionWithMcc.currencySymbol)
+    val detectedCurrency = CurrencyService.detectCurrency(transaction.currencySymbol)
     val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
-    val foreignAmount = transactionWithMcc.transactionAmount
-    val foreignCurrency = if (foreignAmount != null) Config.defaultCurrency else null
-
-    val tags = buildList {
-        if (transactionWithMcc.mccCode != null) {
-            add("mcc:${transactionWithMcc.mccCode}")
-        }
-    }.takeIf { it.isNotEmpty() }
-
     val transactionRequest = TransactionRequest(
-        transactions = listOf(
-            TransactionSplit(
-                type = "withdrawal",
-                date = TransactionParser.convertToFireflyDate(transactionWithMcc.dateTime),
-                amount = transactionWithMcc.amount,
-                description = transactionWithMcc.description,
-                sourceName = sourceAccount,
-                destinationName = transactionWithMcc.description,
-                currencyCode = detectedCurrency,
-                foreignAmount = foreignAmount,
-                foreignCurrencyCode = foreignCurrency,
-                externalId = transactionWithMcc.transactionNumber,
-                notes = null,
-                budgetName = Budget.MAIN.budgetName,
-                tags = tags
-            )
-        )
+        transactions = listOf(transaction.toTransactionSplit(detectedCurrency, sourceAccount))
     )
 
     val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)
@@ -185,17 +152,11 @@ suspend fun BehaviourContext.processPhotoTransaction(
 
     FireflyApiClient.createAndUploadAttachment(
         transactionJournalId = journalId,
-        filename = "forte_transaction_${forteTransaction.transactionNumber}.jpg",
+        filename = "forte_transaction_${transaction.transactionNumber}.jpg",
         title = "Forte Transaction Photo",
         fileBytes = photoBytes,
         notes = null
     )
-
-    val foreignAmountLine = if (foreignAmount != null) {
-        "💵 В ${Config.defaultCurrency}: $foreignAmount"
-    } else {
-        null
-    }
 
     val successMessage = buildString {
         if (progressPrefix.isNotEmpty()) {
@@ -204,14 +165,12 @@ suspend fun BehaviourContext.processPhotoTransaction(
             appendLine("✅ Транзакция успешно сохранена в Firefly III")
             appendLine()
         }
-        appendLine("📝 ${transactionWithMcc.description}")
-        appendLine("💰 ${transactionWithMcc.amount} $detectedCurrency")
-        if (foreignAmountLine != null) {
-            appendLine(foreignAmountLine)
-        }
+        appendLine("📝 ${transaction.description}")
+        appendLine("💰 ${transaction.amount} $detectedCurrency")
+        transaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
         if (progressPrefix.isEmpty()) {
             appendLine("🏦 Счёт: $sourceAccount")
-            appendLine("📅 Дата: ${transactionWithMcc.dateTime.toLocalDateTime()}")
+            appendLine("📅 Дата: ${transaction.dateTime.toLocalDateTime()}")
         }
         append("🔢 ID: ${transactionResponse.data.id}")
     }
