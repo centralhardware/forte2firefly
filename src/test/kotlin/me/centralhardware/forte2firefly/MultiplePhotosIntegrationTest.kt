@@ -274,4 +274,40 @@ class MultiplePhotosIntegrationTest {
         expectedTransactionNumber = "12601751386",
         expectedMccCode = "4121"
     )
+
+    @Test
+    fun `test forte_transaction_12608576722`() = testPhoto(
+        photoFileName = "forte_transaction_12608576722.jpg",
+        expectedDescription = "KIRI KOPI COLOMBO",
+        expectedAmount = "11.13",
+        expectedForeignAmount = "3410",
+        expectedCurrencySymbol = "$",
+        expectedYear = 2025,
+        expectedMonth = 12,
+        expectedDay = 21,
+        expectedHour = 20,
+        expectedMinute = 29,
+        expectedSecond = 50,
+        expectedCardLast4 = "1293",
+        expectedTransactionNumber = "12608576722",
+        expectedMccCode = "5812"
+    )
+
+    @Test
+    fun `test forte_transaction_12543609908`() = testPhoto(
+        photoFileName = "forte_transaction_12543609908.jpg",
+        expectedDescription = "BOLT.EU/O/2512150631",
+        expectedAmount = "1.48",
+        expectedForeignAmount = "6",
+        expectedCurrencySymbol = "$",
+        expectedYear = 2025,
+        expectedMonth = 12,
+        expectedDay = 15,
+        expectedHour = 11,
+        expectedMinute = 31,
+        expectedSecond = 28,
+        expectedCardLast4 = "1293",
+        expectedTransactionNumber = "12543609908",
+        expectedMccCode = "4121"
+    )
 }

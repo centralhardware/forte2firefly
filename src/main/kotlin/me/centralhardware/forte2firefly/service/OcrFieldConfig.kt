@@ -43,8 +43,8 @@ sealed class OcrFieldConfig(
     data object ForeignAmount : OcrFieldConfig(
         name = "foreign_amount",
         region = ReceiptRegionConfig.FOREIGN_AMOUNT,
-        tesseractType = TesseractType.NUMERIC,
-        invert = false,
+        tesseractType = TesseractType.NUMERIC_LINE,
+        invert = true,
         binarize = true,
         binarizeThreshold = 150
     )

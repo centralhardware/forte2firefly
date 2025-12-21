@@ -33,6 +33,7 @@ object TesseractFactory {
 
                 setVariable("load_system_dawg", "false")
                 setVariable("load_freq_dawg", "false")
+                setVariable("user_defined_dpi", "300")
 
                 whitelist?.let { setVariable("tessedit_char_whitelist", it) }
 

@@ -35,6 +35,12 @@ object OCRService {
                 language = "",
                 whitelist = ",.0123456789",
                 additionalVariables = mapOf("classify_bln_numeric_mode" to "1")
+            ),
+            TesseractType.NUMERIC_LINE to TesseractFactory.create(
+                name = "NumericLine",
+                pageSegMode = 7,
+                language = "",
+                whitelist = ",.0123456789"
             )
         )
     }
@@ -164,7 +170,7 @@ object OCRService {
             dateTime = dateTime,
             cardNumber = cardNumber,
             transactionNumber = transactionNumber,
-            foreignAmount = filterMccFromForeignAmount(foreignAmount),
+            foreignAmount = filterMccFromForeignAmount(foreignAmount, mccCode),
             mccCode = mccCode
         )
     }
@@ -177,7 +183,18 @@ object OCRService {
             .map { it.trim() }
             .filter { it.isNotEmpty() && it.length > 3 }
             .firstOrNull()
+            ?.let { cleanMerchantName(it) }
             .also { KSLog.info("Merchant name cleaned: '$it'") }
+    }
+
+    /**
+     * Исправляет типичные OCR ошибки в merchant name
+     */
+    private fun cleanMerchantName(name: String): String {
+        return name
+            .replace("!|", "I")
+            .replace("!l", "I")
+            .replace("l|", "I")
     }
 
     private fun extractAmount(image: BufferedImage, debugMode: Boolean): Pair<String, String>? {
@@ -209,10 +226,17 @@ object OCRService {
         val result = recognizeField(image, OcrFieldConfig.ForeignAmount, debugMode)
             ?: return null
 
-        val cleaned = result.replace(Regex("\\s+"), "")
+        val numericMatch = Regex("""(\d+(?:[.,]\d+)?)""").find(result)
+        if (numericMatch != null) {
+            val cleaned = numericMatch.groupValues[1].replace(",", ".")
+            return cleaned.also { KSLog.info("Foreign amount cleaned: '$it'") }
+        }
+
+        val cleanedResult = result.replace(Regex("\\s+"), "")
             .replace(",", ".")
             .replace(Regex("[.,]+$"), "")
-        return cleaned.ifEmpty { null }
+
+        return cleanedResult.ifEmpty { null }
             .also { KSLog.info("Foreign amount cleaned: '$it'") }
     }
 
@@ -254,7 +278,10 @@ object OCRService {
         }
     }
 
-    private fun filterMccFromForeignAmount(foreignAmount: String?): String? {
+    private fun filterMccFromForeignAmount(foreignAmount: String?, mccCode: String?): String? {
+        if (mccCode != null && mccCode != foreignAmount) {
+            return foreignAmount
+        }
         return if (foreignAmount?.matches(Regex("^\\d{4,}$")) == true) null else foreignAmount
     }
 
