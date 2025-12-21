@@ -2,7 +2,6 @@ package me.centralhardware.forte2firefly.model
 
 enum class Budget(val budgetName: String, val emoji: String) {
     MAIN("main", "💰"),
-    TRAVEL("travel", "✈️"),
     STUDY("study", "📚"),
     SUBSCRIPTIONS("subscriptions", "📱");
 
