@@ -5,7 +5,7 @@ import dev.inmo.tgbotapi.types.buttons.InlineKeyboardMarkup
 import me.centralhardware.forte2firefly.model.Budget
 
 fun createBudgetKeyboard(transactionId: String, currentBudget: Budget): InlineKeyboardMarkup {
-    val displayName = currentBudget.budgetName ?: "none"
+    val displayName = if (currentBudget.budgetName.isEmpty()) "none" else currentBudget.budgetName
     return InlineKeyboardMarkup(
         keyboard = listOf(
             listOf(

@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test
 class BudgetTest {
 
     @Test
-    fun `NONE budget has null budgetName`() {
-        assertNull(Budget.NONE.budgetName)
+    fun `NONE budget has empty budgetName`() {
+        assertEquals("", Budget.NONE.budgetName)
     }
 
     @Test
@@ -20,6 +20,12 @@ class BudgetTest {
     @Test
     fun `fromName returns NONE for none string`() {
         val budget = Budget.fromName("none")
+        assertEquals(Budget.NONE, budget)
+    }
+
+    @Test
+    fun `fromName returns NONE for empty string`() {
+        val budget = Budget.fromName("")
         assertEquals(Budget.NONE, budget)
     }
 

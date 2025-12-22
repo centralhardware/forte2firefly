@@ -34,7 +34,9 @@ fun BehaviourContext.registerBudgetHandler() {
             val allSplits = transaction.data.attributes.transactions
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            val changeLog = "[$timestamp] Бюджет изменен: ${currentBudget.budgetName} → ${newBudget.budgetName}"
+            val oldBudgetDisplay = if (currentBudget.budgetName.isEmpty()) "удален" else currentBudget.budgetName
+            val newBudgetDisplay = if (newBudget.budgetName.isEmpty()) "удален" else newBudget.budgetName
+            val changeLog = "[$timestamp] Бюджет изменен: $oldBudgetDisplay → $newBudgetDisplay"
 
             val updatedSplits = allSplits.map { split ->
                 val updatedNotes = if (split.notes.isNullOrBlank()) {
@@ -56,7 +58,12 @@ fun BehaviourContext.registerBudgetHandler() {
 
             FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
-            answer(query, "Бюджет изменен на ${newBudget.budgetName}")
+            val answerText = if (newBudget.budgetName.isEmpty()) {
+                "Бюджет удален"
+            } else {
+                "Бюджет изменен на ${newBudget.budgetName}"
+            }
+            answer(query, answerText)
 
             val queryMessage = query.message
             if (queryMessage.content is TextContent) {
