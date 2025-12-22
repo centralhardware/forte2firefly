@@ -5,12 +5,13 @@ import dev.inmo.tgbotapi.types.buttons.InlineKeyboardMarkup
 import me.centralhardware.forte2firefly.model.Budget
 
 fun createBudgetKeyboard(transactionId: String, currentBudget: Budget): InlineKeyboardMarkup {
+    val displayName = currentBudget.budgetName ?: "none"
     return InlineKeyboardMarkup(
         keyboard = listOf(
             listOf(
                 CallbackDataInlineKeyboardButton(
-                    text = "${currentBudget.emoji} ${currentBudget.budgetName}",
-                    callbackData = "budget:$transactionId:${currentBudget.budgetName}"
+                    text = "${currentBudget.emoji} $displayName",
+                    callbackData = "budget:$transactionId:$displayName"
                 )
             )
         )

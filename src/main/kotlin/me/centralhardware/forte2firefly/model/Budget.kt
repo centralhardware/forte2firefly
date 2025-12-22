@@ -1,9 +1,10 @@
 package me.centralhardware.forte2firefly.model
 
-enum class Budget(val budgetName: String, val emoji: String) {
+enum class Budget(val budgetName: String?, val emoji: String) {
     MAIN("main", "💰"),
     STUDY("study", "📚"),
-    SUBSCRIPTIONS("subscriptions", "📱");
+    SUBSCRIPTIONS("subscriptions", "📱"),
+    NONE(null, "🚫");
 
     fun getNext(): Budget {
         val currentIndex = entries.indexOf(this)
@@ -12,6 +13,7 @@ enum class Budget(val budgetName: String, val emoji: String) {
 
     companion object {
         fun fromName(name: String): Budget? {
+            if (name == "none") return NONE
             return entries.find { it.budgetName == name }
         }
 
