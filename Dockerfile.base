@@ -82,11 +82,11 @@ RUN wget https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.86.0.tar.
 
 
 ############################################################
-# 7. Tesseract 5.5.1
+# 7. Tesseract 5.5.2
 ############################################################
-RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.1.tar.gz \
- && tar -xzf 5.5.1.tar.gz \
- && cd tesseract-5.5.1 \
+RUN wget https://github.com/tesseract-ocr/tesseract/archive/5.5.2.tar.gz \
+ && tar -xzf 5.5.2.tar.gz \
+ && cd tesseract-5.5.2 \
  && ./autogen.sh \
  && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./configure --prefix=/usr/local --disable-openmp \
  && make -j$(nproc) \
