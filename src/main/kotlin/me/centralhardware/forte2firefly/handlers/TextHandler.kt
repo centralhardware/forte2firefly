@@ -11,8 +11,6 @@ import dev.inmo.tgbotapi.types.message.abstracts.Message
 import dev.inmo.tgbotapi.types.message.content.TextContent
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 fun BehaviourContext.registerTextHandler() {
     onContentMessage(
@@ -49,7 +47,11 @@ private suspend fun BehaviourContext.handleTransactionUpdate(
 ) {
     try {
         val newText = message.content.text.trim()
-        val newAmount = newText.toDoubleOrNull()
+
+        if (newText.isBlank()) {
+            bot.sendMessage(message.chat, "⚠️ Описание не может быть пустым.", linkPreviewOptions = LinkPreviewOptions.Disabled)
+            return
+        }
 
         val replyContent = (replyTo as? dev.inmo.tgbotapi.types.message.abstracts.ContentMessage<*>)?.content
         val textContent = when (replyContent) {
@@ -70,68 +72,29 @@ private suspend fun BehaviourContext.handleTransactionUpdate(
 
         val transactionId = matchResult.groupValues[1]
 
+        bot.sendMessage(message.chat, "Обновляю описание транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
+
         val currentTransaction = FireflyApiClient.getTransaction(transactionId)
         val currentSplit = currentTransaction.data.attributes.transactions.first()
-        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
-        if (newAmount != null && newAmount > 0) {
-            bot.sendMessage(message.chat, "Обновляю сумму транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
+        val updatedSplit = currentSplit.copy(
+            description = newText
+        )
 
-            val oldAmount = currentSplit.amount
-            val changeLog = "[$timestamp] Сумма изменена: ${oldAmount.formatAmount()} → ${newAmount.toBigDecimal().stripTrailingZeros().toPlainString()}"
-            val updatedNotes = if (currentSplit.notes.isNullOrBlank()) {
-                changeLog
-            } else {
-                "${currentSplit.notes}\n$changeLog"
-            }
+        val updateRequest = TransactionRequest(
+            transactions = listOf(updatedSplit)
+        )
 
-            val updatedSplit = currentSplit.copy(
-                amount = newAmount.toString(),
-                notes = updatedNotes
-            )
+        FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
-            val updateRequest = TransactionRequest(
-                transactions = listOf(updatedSplit)
-            )
-
-            FireflyApiClient.updateTransaction(transactionId, updateRequest)
-
-            val successMessage = buildString {
-                appendLine("✅ Сумма транзакции #$transactionId успешно обновлена")
-                appendLine()
-                appendLine("💰 Новая сумма: $newAmount")
-                append("📝 ${currentSplit.description}")
-            }
-
-            bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
-        } else {
-            // Update description
-            if (newText.isBlank()) {
-                bot.sendMessage(message.chat, "⚠️ Описание не может быть пустым.", linkPreviewOptions = LinkPreviewOptions.Disabled)
-                return
-            }
-
-            bot.sendMessage(message.chat, "Обновляю описание транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
-
-            val updatedSplit = currentSplit.copy(
-                description = newText
-            )
-
-            val updateRequest = TransactionRequest(
-                transactions = listOf(updatedSplit)
-            )
-
-            FireflyApiClient.updateTransaction(transactionId, updateRequest)
-
-            val successMessage = buildString {
-                appendLine("✅ Описание транзакции #$transactionId успешно обновлено")
-                appendLine()
-                appendLine("📝 Новое описание: $newText")
-                append("💰 Сумма: ${currentSplit.amount.formatAmount()} ${currentSplit.currencyCode ?: ""}")
-            }
-
-            bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
+        val successMessage = buildString {
+            appendLine("✅ Описание транзакции #$transactionId успешно обновлено")
+            appendLine()
+            appendLine("📝 Новое описание: $newText")
+            append("💰 Сумма: ${currentSplit.amount.formatAmount()} ${currentSplit.currencyCode ?: ""}")
         }
+
+        bot.sendMessage(message.chat, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
         KSLog.error("Error updating transaction", e)

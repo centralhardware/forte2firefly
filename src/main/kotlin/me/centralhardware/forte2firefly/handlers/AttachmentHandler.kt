@@ -188,13 +188,14 @@ suspend fun BehaviourContext.addTransactionToSplit(
         )
 
         val successMessage = buildString {
-            appendLine("✅ Транзакция добавлена в split #$transactionId")
+            appendLine("✅ Split успешно добавлен в транзакцию #$transactionId")
             appendLine()
             appendLine("📝 ${forteTransaction.description}")
             appendLine("💰 ${forteTransaction.amount} $detectedCurrency")
             forteTransaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
-            appendLine()
-            append("🔢 Всего splits: ${updatedSplits.size}")
+            appendLine("🏦 Счёт: $sourceAccount")
+            appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
+            append("🔢 ID: $transactionId")
         }
 
         bot.sendMessage(
