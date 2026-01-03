@@ -70,11 +70,8 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
         val transaction = FireflyApiClient.getTransaction(transactionId)
-        val journalIds = transaction.data.attributes.transactions.mapNotNull { it.transactionJournalId }
-
-        if (journalIds.isEmpty()) {
-            throw RuntimeException("No transaction journal IDs found")
-        }
+        val journalId = transaction.data.attributes.transactions.first().transactionJournalId
+            ?: throw RuntimeException("Transaction journal ID is missing")
 
         val messageText = when (val content = message.content) {
             is PhotoContent -> content.text
@@ -85,78 +82,53 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
         val timestamp = LocalDateTime.now().format(formatter)
 
-        val baseFilename: String
-        val baseTitle: String
+        val filename: String
+        val title: String
         when (val content = message.content) {
             is PhotoContent -> {
                 if (!messageText.isNullOrBlank()) {
-                    baseFilename = messageText
-                    baseTitle = messageText
+                    filename = "$messageText.jpg"
+                    title = messageText
                 } else {
-                    baseFilename = "photo_$timestamp"
-                    baseTitle = "Photo $timestamp"
+                    filename = "photo_$timestamp.jpg"
+                    title = "Photo $timestamp"
                 }
             }
             is DocumentContent -> {
                 val originalName = content.media.fileName
 
                 if (originalName != null) {
-                    baseFilename = originalName.substringBeforeLast(".")
-                    baseTitle = messageText?.takeIf { it.isNotBlank() } ?: originalName
+                    filename = originalName
+                    title = messageText?.takeIf { it.isNotBlank() } ?: originalName
                 } else {
                     if (!messageText.isNullOrBlank()) {
-                        baseFilename = messageText
-                        baseTitle = messageText
+                        filename = messageText
+                        title = messageText
                     } else {
-                        baseFilename = "document_$timestamp"
-                        baseTitle = "Document $timestamp"
+                        filename = "document_$timestamp"
+                        title = "Document $timestamp"
                     }
                 }
             }
             else -> {
-                baseFilename = if (!messageText.isNullOrBlank()) {
+                filename = if (!messageText.isNullOrBlank()) {
                     messageText
                 } else {
                     "attachment_$timestamp"
                 }
-                baseTitle = messageText ?: "Attachment $timestamp"
+                title = messageText ?: "Attachment $timestamp"
             }
         }
 
-        // Attach to each split in the transaction
-        journalIds.forEachIndexed { index, journalId ->
-            val suffix = if (journalIds.size > 1) "_split${index + 1}" else ""
-            val extension = when (message.content) {
-                is PhotoContent -> ".jpg"
-                is DocumentContent -> {
-                    val originalName = (message.content as DocumentContent).media.fileName
-                    if (originalName != null && originalName.contains(".")) {
-                        ".${originalName.substringAfterLast(".")}"
-                    } else {
-                        ""
-                    }
-                }
-                else -> ""
-            }
-            val filename = "$baseFilename$suffix$extension"
-            val title = if (journalIds.size > 1) "$baseTitle (Split ${index + 1})" else baseTitle
+        FireflyApiClient.createAndUploadAttachment(
+            transactionJournalId = journalId,
+            filename = filename,
+            title = title,
+            fileBytes = fileBytes,
+            notes = "Added via reply in Telegram Bot"
+        )
 
-            FireflyApiClient.createAndUploadAttachment(
-                transactionJournalId = journalId,
-                filename = filename,
-                title = title,
-                fileBytes = fileBytes,
-                notes = "Added via reply in Telegram Bot"
-            )
-        }
-
-        val attachmentCount = journalIds.size
-        val successText = if (attachmentCount > 1) {
-            "✅ Файл успешно прикреплен к $attachmentCount splits транзакции #$transactionId"
-        } else {
-            "✅ Файл успешно прикреплен к транзакции #$transactionId"
-        }
-        sendMessage(message.chat, successText, linkPreviewOptions = LinkPreviewOptions.Disabled)
+        sendMessage(message.chat, "✅ Файл успешно прикреплен к транзакции #$transactionId", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
     } catch (e: Exception) {
         KSLog.error("Error processing attachment reply", e)
