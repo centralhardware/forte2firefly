@@ -202,7 +202,7 @@ suspend fun BehaviourContext.addTransactionToSplit(
             forteTransaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
             appendLine("🏦 Счёт: $sourceAccount")
             appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
-            append("🔢 ID: $transactionId")
+            append("🔢 ID: $newJournalId")
         }
 
         val sentMessage = bot.sendMessage(
