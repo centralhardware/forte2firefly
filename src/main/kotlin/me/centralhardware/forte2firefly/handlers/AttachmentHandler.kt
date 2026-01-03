@@ -176,16 +176,20 @@ suspend fun BehaviourContext.addTransactionToSplit(
 
         val updatedTransaction = FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
-        // Get the journal ID of the newly added split
+        // Get the journal ID of the newly added split by matching external_id
         val updatedSplits = updatedTransaction.data.attributes.transactions
-        val newJournalId = updatedSplits.last().transactionJournalId
+        val newSplitEntry = updatedSplits.find { it.externalId == forteTransaction.transactionNumber }
+            ?: throw RuntimeException("Could not find newly added split with transaction number ${forteTransaction.transactionNumber}")
+
+        val newJournalId = newSplitEntry.transactionJournalId
             ?: throw RuntimeException("Transaction journal ID is missing for new split")
 
         // Attach photo to the new split
+        val splitIndex = updatedSplits.indexOf(newSplitEntry) + 1
         FireflyApiClient.createAndUploadAttachment(
             transactionJournalId = newJournalId,
-            filename = "forte_transaction_${forteTransaction.transactionNumber}_split${updatedSplits.size}.jpg",
-            title = "Split ${updatedSplits.size} - Forte Transaction Photo",
+            filename = "forte_transaction_${forteTransaction.transactionNumber}_split${splitIndex}.jpg",
+            title = "Split ${splitIndex} - Forte Transaction Photo",
             fileBytes = newTransactionBytes,
             notes = null
         )
