@@ -1,16 +1,9 @@
 package me.centralhardware.forte2firefly.handlers
 
-import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.error
-import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
-import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
-import dev.inmo.tgbotapi.types.message.content.TextContent
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.ForteTransaction
@@ -72,8 +65,8 @@ suspend fun BehaviourContext.processPhotoTransaction(
 
     FireflyApiClient.createAndUploadAttachment(
         transactionJournalId = journalId,
-        filename = "forte_transaction_${transaction.transactionNumber}.jpg",
-        title = "Forte Transaction Photo",
+        filename = "forte_transaction_${transaction.transactionNumber}_split1.jpg",
+        title = "Split 1 - Forte Transaction Photo",
         fileBytes = photoBytes,
         notes = null
     )

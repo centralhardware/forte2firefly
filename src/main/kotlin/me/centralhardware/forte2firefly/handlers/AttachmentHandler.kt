@@ -3,7 +3,6 @@ package me.centralhardware.forte2firefly.handlers
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.error
 import dev.inmo.kslog.common.info
-import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
@@ -16,8 +15,6 @@ import dev.inmo.tgbotapi.types.message.content.DocumentContent
 import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
@@ -178,7 +175,7 @@ suspend fun BehaviourContext.addTransactionToSplit(
         FireflyApiClient.createAndUploadAttachment(
             transactionJournalId = newJournalId,
             filename = "forte_transaction_${forteTransaction.transactionNumber}_split${splitIndex}.jpg",
-            title = "Split ${splitIndex} - Forte Transaction Photo",
+            title = "Split $splitIndex - Forte Transaction Photo",
             fileBytes = newTransactionBytes,
             notes = null
         )

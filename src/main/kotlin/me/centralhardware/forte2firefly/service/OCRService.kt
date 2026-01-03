@@ -172,8 +172,7 @@ object OCRService {
 
         return result.lines()
             .map { it.trim() }
-            .filter { it.isNotEmpty() && it.length > 3 }
-            .firstOrNull()
+            .firstOrNull { it.isNotEmpty() && it.length > 3 }
             ?.let { cleanMerchantName(it) }
             .also { KSLog.info("Merchant name cleaned: '$it'") }
     }
@@ -239,7 +238,7 @@ object OCRService {
             }
         }
 
-        val hasForeignAmount = foreignAmount != null && foreignAmount.isNotEmpty()
+        val hasForeignAmount = !foreignAmount.isNullOrEmpty()
         val oldFormatResult = recognizeField(image, OcrFieldConfig.MccOldFormat(hasForeignAmount), debugMode)
         if (oldFormatResult != null) {
             val cleaned = oldFormatResult.replace(Regex("\\s+"), "")
