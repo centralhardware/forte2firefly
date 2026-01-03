@@ -35,11 +35,6 @@ object ImagePreprocessor {
         return scaled
     }
 
-    /**
-     * Инвертирует цвета изображения (темный фон → светлый, светлый текст → темный)
-     * Это необходимо для лучшего распознавания белого текста на темном фоне
-     * Использует ColorConvertOp для безопасной инверсии
-     */
     fun invertColors(image: BufferedImage): BufferedImage {
         val inverted = BufferedImage(image.width, image.height, BufferedImage.TYPE_INT_RGB)
 
@@ -57,11 +52,6 @@ object ImagePreprocessor {
         return inverted
     }
 
-    /**
-     * Применяет бинаризацию к изображению (превращает в чёрно-белое)
-     * Это улучшает распознавание текста, особенно для цифр
-     * Использует простую пороговую бинаризацию
-     */
     fun binarizeImage(image: BufferedImage, threshold: Int = 128): BufferedImage {
         val binary = BufferedImage(image.width, image.height, BufferedImage.TYPE_BYTE_GRAY)
 
@@ -82,9 +72,6 @@ object ImagePreprocessor {
         return binary
     }
 
-    /**
-     * Извлекает и обрабатывает регион изображения для OCR (с объектом Region)
-     */
     fun extractAndProcessRegion(
         image: BufferedImage,
         region: ReceiptRegionConfig.Region,

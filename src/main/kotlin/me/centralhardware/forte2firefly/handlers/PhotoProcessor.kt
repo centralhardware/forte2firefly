@@ -97,34 +97,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
 
     val sentMessage = bot.sendMessage(chatId, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
 
-    // Update budget keyboard after Firefly rules are applied
     updateBudgetAfterRules(transactionResponse.data.id, sentMessage)
 
     return transactionResponse.data.id
-}
-
-private fun BehaviourContext.updateBudgetAfterRules(
-    transactionId: String,
-    message: ContentMessage<TextContent>
-) {
-    launch {
-        try {
-            // Wait for Firefly rules to be applied
-            delay(2000)
-
-            // Get actual budget from Firefly
-            val transaction = FireflyApiClient.getTransaction(transactionId)
-            val actualBudgetName = transaction.data.attributes.transactions.first().budgetName
-            val actualBudget = Budget.fromNameOrDefault(actualBudgetName)
-
-            // Update message with actual budget button
-            edit(
-                message,
-                message.content.text,
-                replyMarkup = createBudgetKeyboard(transactionId, actualBudget)
-            )
-        } catch (e: Exception) {
-            KSLog.error("Error updating budget keyboard after rules", e)
-        }
-    }
 }

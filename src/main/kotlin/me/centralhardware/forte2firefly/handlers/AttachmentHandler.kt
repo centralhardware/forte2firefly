@@ -8,6 +8,7 @@ import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
+import dev.inmo.tgbotapi.types.chat.Chat
 import dev.inmo.tgbotapi.types.message.abstracts.CommonMessage
 import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
 import dev.inmo.tgbotapi.types.message.abstracts.Message
@@ -51,7 +52,6 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         val journalId = matchResult.groupValues[2]
         val fileBytes = downloadFile(message.content)
 
-        // Try to parse as transaction if it's a photo
         if (message.content is PhotoContent) {
             val forteTransaction = OCRService.extractAllFields(fileBytes)
 
@@ -136,14 +136,12 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
 suspend fun BehaviourContext.addTransactionToSplit(
     transactionId: String,
     newTransactionBytes: ByteArray,
-    chatId: dev.inmo.tgbotapi.types.chat.Chat
+    chatId: Chat
 ) {
     try {
-        // Get existing transaction
         val existingTransaction = FireflyApiClient.getTransaction(transactionId)
         val existingSplits = existingTransaction.data.attributes.transactions
 
-        // Parse new transaction from photo
         val forteTransaction = OCRService.extractAllFields(newTransactionBytes)
             ?: throw RuntimeException("Failed to parse transaction from photo")
 
@@ -151,13 +149,10 @@ suspend fun BehaviourContext.addTransactionToSplit(
         val sourceAccount = Config.currencyAccounts[detectedCurrency]
             ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
-        // Create new split from parsed transaction
         val newSplit = forteTransaction.toTransactionSplit(detectedCurrency, sourceAccount)
 
-        // Combine existing and new splits
         val allSplits = existingSplits + newSplit
 
-        // Generate group title
         val descriptions = allSplits.map { it.description }
         val groupTitle = if (descriptions.toSet().size == 1) {
             descriptions.first()
@@ -165,7 +160,6 @@ suspend fun BehaviourContext.addTransactionToSplit(
             descriptions.mapIndexed { index, desc -> "${index + 1}. $desc" }.joinToString(" | ")
         }
 
-        // Update transaction with new split
         val updateRequest = TransactionRequest(
             groupTitle = groupTitle,
             transactions = allSplits
@@ -173,7 +167,6 @@ suspend fun BehaviourContext.addTransactionToSplit(
 
         val updatedTransaction = FireflyApiClient.updateTransaction(transactionId, updateRequest)
 
-        // Get the journal ID of the newly added split by matching external_id
         val updatedSplits = updatedTransaction.data.attributes.transactions
         val newSplitEntry = updatedSplits.find { it.externalId == forteTransaction.transactionNumber }
             ?: throw RuntimeException("Could not find newly added split with transaction number ${forteTransaction.transactionNumber}")
@@ -181,7 +174,6 @@ suspend fun BehaviourContext.addTransactionToSplit(
         val newJournalId = newSplitEntry.transactionJournalId
             ?: throw RuntimeException("Transaction journal ID is missing for new split")
 
-        // Attach photo to the new split
         val splitIndex = updatedSplits.indexOf(newSplitEntry) + 1
         FireflyApiClient.createAndUploadAttachment(
             transactionJournalId = newJournalId,
@@ -209,37 +201,10 @@ suspend fun BehaviourContext.addTransactionToSplit(
             replyMarkup = createBudgetKeyboard(transactionId, Budget.MAIN)
         )
 
-        // Update budget keyboard after Firefly rules are applied
         updateBudgetAfterRules(transactionId, sentMessage)
 
     } catch (e: Exception) {
         KSLog.error("Error adding transaction to split", e)
         sendMessage(chatId, "❌ Ошибка при добавлении транзакции в split: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
-    }
-}
-
-private fun BehaviourContext.updateBudgetAfterRules(
-    transactionId: String,
-    message: ContentMessage<TextContent>
-) {
-    launch {
-        try {
-            // Wait for Firefly rules to be applied
-            delay(2000)
-
-            // Get actual budget from Firefly
-            val transaction = FireflyApiClient.getTransaction(transactionId)
-            val actualBudgetName = transaction.data.attributes.transactions.first().budgetName
-            val actualBudget = Budget.fromNameOrDefault(actualBudgetName)
-
-            // Update message with actual budget button
-            edit(
-                message,
-                message.content.text,
-                replyMarkup = createBudgetKeyboard(transactionId, actualBudget)
-            )
-        } catch (e: Exception) {
-            KSLog.error("Error updating budget keyboard after rules", e)
-        }
     }
 }

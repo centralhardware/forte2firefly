@@ -8,12 +8,6 @@ import net.sourceforge.tess4j.Tesseract
 
 object TesseractFactory {
 
-    private fun getTessdataPath(): String {
-        return runCatching { Config.tessdataPrefix }.getOrNull()
-            ?: System.getenv("TESSDATA_PREFIX")
-            ?: "/usr/share/tesseract-ocr/5/tessdata/"
-    }
-
     fun create(
         name: String,
         pageSegMode: Int,
@@ -24,7 +18,7 @@ object TesseractFactory {
     ): Tesseract {
         return Tesseract().apply {
             try {
-                setDatapath(getTessdataPath())
+                setDatapath(Config.tessdataPrefix)
                 if (language.isNotEmpty()) {
                     setLanguage(language)
                 }

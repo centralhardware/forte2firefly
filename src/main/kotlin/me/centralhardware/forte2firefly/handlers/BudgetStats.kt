@@ -59,7 +59,7 @@ suspend fun BehaviourContext.generateBudgetStats(chatId: Chat) {
         }
 
         val daysInMonth = yearMonth.lengthOfMonth()
-        val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt() // Дни без сегодня
+        val daysPassed = ChronoUnit.DAYS.between(startOfMonth, now).toInt()
         val daysRemaining = daysInMonth - daysPassed - 1
 
         val todayTransactions = transactions.data.filter { transaction ->

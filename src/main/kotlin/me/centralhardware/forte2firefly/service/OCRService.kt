@@ -48,9 +48,6 @@ object OCRService {
     private fun getTesseract(type: TesseractType): Tesseract =
         tesseractInstances[type] ?: error("Tesseract instance not found for $type")
 
-    /**
-     * Распознает поле изображения по конфигурации
-     */
     private fun recognizeField(
         image: BufferedImage,
         config: OcrFieldConfig,
@@ -87,9 +84,6 @@ object OCRService {
         KSLog.info("Saved $name to debug_ocr/$name.png")
     }
 
-    /**
-     * Извлекает все поля транзакции из изображения чека
-     */
     suspend fun extractAllFields(photoBytes: ByteArray, debugMode: Boolean = false): ForteTransaction? =
         withContext(Dispatchers.IO) {
             KSLog.info("Starting comprehensive region-based OCR extraction")
@@ -117,9 +111,6 @@ object OCRService {
         }
     }
 
-    /**
-     * Данные, извлеченные из чека
-     */
     private data class ExtractedFields(
         val merchantName: String,
         val amount: Pair<String, String>,
@@ -187,9 +178,6 @@ object OCRService {
             .also { KSLog.info("Merchant name cleaned: '$it'") }
     }
 
-    /**
-     * Исправляет типичные OCR ошибки в merchant name
-     */
     private fun cleanMerchantName(name: String): String {
         return name
             .replace("!|", "I")
@@ -241,7 +229,6 @@ object OCRService {
     }
 
     private fun extractMccCode(image: BufferedImage, foreignAmount: String?, debugMode: Boolean): String? {
-        // Сначала пробуем новый формат
         val newFormatResult = recognizeField(image, OcrFieldConfig.MccNewFormat, debugMode)
         if (newFormatResult != null) {
             val mccMatch = Regex("""(\d{4})""").find(newFormatResult)
@@ -252,7 +239,6 @@ object OCRService {
             }
         }
 
-        // Пробуем старый формат
         val hasForeignAmount = foreignAmount != null && foreignAmount.isNotEmpty()
         val oldFormatResult = recognizeField(image, OcrFieldConfig.MccOldFormat(hasForeignAmount), debugMode)
         if (oldFormatResult != null) {
@@ -263,7 +249,6 @@ object OCRService {
             }
         }
 
-        // Fallback: используем foreignAmount если это 4+ цифр
         return when {
             foreignAmount?.matches(Regex("^\\d{4}$")) == true -> {
                 KSLog.info("Foreign amount '$foreignAmount' is 4-digit code, using as MCC fallback")

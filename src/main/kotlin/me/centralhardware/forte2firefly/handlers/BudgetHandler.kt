@@ -34,8 +34,8 @@ fun BehaviourContext.registerBudgetHandler() {
             val allSplits = transaction.data.attributes.transactions
 
             val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            val oldBudgetDisplay = if (currentBudget.budgetName.isEmpty()) "удален" else currentBudget.budgetName
-            val newBudgetDisplay = if (newBudget.budgetName.isEmpty()) "удален" else newBudget.budgetName
+            val oldBudgetDisplay = currentBudget.budgetName.ifEmpty { "удален" }
+            val newBudgetDisplay = newBudget.budgetName.ifEmpty { "удален" }
             val changeLog = "[$timestamp] Бюджет изменен: $oldBudgetDisplay → $newBudgetDisplay"
 
             val updatedSplits = allSplits.map { split ->
