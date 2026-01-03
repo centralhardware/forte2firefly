@@ -101,7 +101,7 @@ suspend fun BehaviourContext.processSplitTransaction(
     )
 }
 
-private fun ForteTransaction.toTransactionSplit(
+fun ForteTransaction.toTransactionSplit(
     detectedCurrency: String,
     sourceAccount: String
 ): TransactionSplit {
