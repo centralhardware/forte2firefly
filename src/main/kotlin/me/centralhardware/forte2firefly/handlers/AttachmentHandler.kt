@@ -1,5 +1,9 @@
 package me.centralhardware.forte2firefly.handlers
 
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
+import dev.inmo.kslog.common.info
+import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.files.downloadFile
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
@@ -11,14 +15,13 @@ import dev.inmo.tgbotapi.types.message.content.DocumentContent
 import dev.inmo.tgbotapi.types.message.content.MediaContent
 import dev.inmo.tgbotapi.types.message.content.PhotoContent
 import dev.inmo.tgbotapi.types.message.content.TextContent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.service.CurrencyService
 import me.centralhardware.forte2firefly.service.FireflyApiClient
-import dev.inmo.kslog.common.KSLog
-import dev.inmo.kslog.common.error
-import dev.inmo.kslog.common.info
 import me.centralhardware.forte2firefly.service.OCRService
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -198,15 +201,44 @@ suspend fun BehaviourContext.addTransactionToSplit(
             append("🔢 ID: $transactionId")
         }
 
-        bot.sendMessage(
+        val sentMessage = bot.sendMessage(
             chatId,
             successMessage,
             linkPreviewOptions = LinkPreviewOptions.Disabled,
             replyMarkup = createBudgetKeyboard(transactionId, Budget.MAIN)
         )
 
+        // Update budget keyboard after Firefly rules are applied
+        updateBudgetAfterRules(transactionId, sentMessage)
+
     } catch (e: Exception) {
         KSLog.error("Error adding transaction to split", e)
         sendMessage(chatId, "❌ Ошибка при добавлении транзакции в split: ${e.message ?: "Неизвестная ошибка"}", linkPreviewOptions = LinkPreviewOptions.Disabled)
+    }
+}
+
+private fun BehaviourContext.updateBudgetAfterRules(
+    transactionId: String,
+    message: ContentMessage<TextContent>
+) {
+    launch {
+        try {
+            // Wait for Firefly rules to be applied
+            delay(2000)
+
+            // Get actual budget from Firefly
+            val transaction = FireflyApiClient.getTransaction(transactionId)
+            val actualBudgetName = transaction.data.attributes.transactions.first().budgetName
+            val actualBudget = Budget.fromNameOrDefault(actualBudgetName)
+
+            // Update message with actual budget button
+            edit(
+                message,
+                message.content.text,
+                replyMarkup = createBudgetKeyboard(transactionId, actualBudget)
+            )
+        } catch (e: Exception) {
+            KSLog.error("Error updating budget keyboard after rules", e)
+        }
     }
 }

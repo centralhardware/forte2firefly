@@ -1,9 +1,16 @@
 package me.centralhardware.forte2firefly.handlers
 
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.error
+import dev.inmo.tgbotapi.extensions.api.edit.edit
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
 import dev.inmo.tgbotapi.types.chat.Chat
+import dev.inmo.tgbotapi.types.message.abstracts.ContentMessage
+import dev.inmo.tgbotapi.types.message.content.TextContent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.centralhardware.forte2firefly.Config
 import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.ForteTransaction
@@ -88,7 +95,36 @@ suspend fun BehaviourContext.processPhotoTransaction(
         append("🔢 ID: ${transactionResponse.data.id}")
     }
 
-    bot.sendMessage(chatId, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
+    val sentMessage = bot.sendMessage(chatId, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
+
+    // Update budget keyboard after Firefly rules are applied
+    updateBudgetAfterRules(transactionResponse.data.id, sentMessage)
 
     return transactionResponse.data.id
+}
+
+private fun BehaviourContext.updateBudgetAfterRules(
+    transactionId: String,
+    message: ContentMessage<TextContent>
+) {
+    launch {
+        try {
+            // Wait for Firefly rules to be applied
+            delay(2000)
+
+            // Get actual budget from Firefly
+            val transaction = FireflyApiClient.getTransaction(transactionId)
+            val actualBudgetName = transaction.data.attributes.transactions.first().budgetName
+            val actualBudget = Budget.fromNameOrDefault(actualBudgetName)
+
+            // Update message with actual budget button
+            edit(
+                message,
+                message.content.text,
+                replyMarkup = createBudgetKeyboard(transactionId, actualBudget)
+            )
+        } catch (e: Exception) {
+            KSLog.error("Error updating budget keyboard after rules", e)
+        }
+    }
 }
