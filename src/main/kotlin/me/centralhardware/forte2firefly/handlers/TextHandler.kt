@@ -62,30 +62,38 @@ private suspend fun BehaviourContext.handleTransactionUpdate(
             }
         }
 
-        val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
-        val matchResult = transactionIdRegex.find(textContent)
-
+        val idRegex = """ID транзакции:\s*(\d+),\s*Journal:\s*(\d+)""".toRegex()
+        val matchResult = idRegex.find(textContent)
+        
         if (matchResult == null) {
             bot.sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.", linkPreviewOptions = LinkPreviewOptions.Disabled)
             return
         }
-
+        
         val transactionId = matchResult.groupValues[1]
+        val journalId = matchResult.groupValues[2]
 
         bot.sendMessage(message.chat, "Обновляю описание транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
 
         val currentTransaction = FireflyApiClient.getTransaction(transactionId)
-        val currentSplit = currentTransaction.data.attributes.transactions.first()
+        val allSplits = currentTransaction.data.attributes.transactions
 
-        val updatedSplit = currentSplit.copy(
-            description = newText
-        )
+        val updatedSplits = allSplits.map { split ->
+            if (split.transactionJournalId == journalId) {
+                split.copy(description = newText)
+            } else {
+                split
+            }
+        }
 
         val updateRequest = TransactionRequest(
-            transactions = listOf(updatedSplit)
+            transactions = updatedSplits
         )
 
         FireflyApiClient.updateTransaction(transactionId, updateRequest)
+
+        val currentSplit = allSplits.find { it.transactionJournalId == journalId }
+            ?: throw RuntimeException("Split with journal ID $journalId not found")
 
         val successMessage = buildString {
             appendLine("✅ Описание транзакции #$transactionId успешно обновлено")

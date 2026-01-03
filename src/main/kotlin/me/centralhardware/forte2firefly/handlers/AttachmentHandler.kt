@@ -39,15 +39,16 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
             }
         }
 
-        val transactionIdRegex = """(?:ID транзакции|ID):\s*(\d+)""".toRegex()
-        val matchResult = transactionIdRegex.find(textContent)
-
+        val idRegex = """ID транзакции:\s*(\d+),\s*Journal:\s*(\d+)""".toRegex()
+        val matchResult = idRegex.find(textContent)
+        
         if (matchResult == null) {
             sendMessage(message.chat, "⚠️ Не удалось найти ID транзакции в сообщении. Используйте reply на сообщение с ID транзакции.", linkPreviewOptions = LinkPreviewOptions.Disabled)
             return
         }
-
+        
         val transactionId = matchResult.groupValues[1]
+        val journalId = matchResult.groupValues[2]
         val fileBytes = downloadFile(message.content)
 
         // Try to parse as transaction if it's a photo
@@ -68,10 +69,6 @@ suspend fun <T : MediaContent> BehaviourContext.handleAttachmentReply(
         }
 
         sendMessage(message.chat, "Прикрепляю файл к транзакции #$transactionId...", linkPreviewOptions = LinkPreviewOptions.Disabled)
-
-        val transaction = FireflyApiClient.getTransaction(transactionId)
-        val journalId = transaction.data.attributes.transactions.first().transactionJournalId
-            ?: throw RuntimeException("Transaction journal ID is missing")
 
         val messageText = when (val content = message.content) {
             is PhotoContent -> content.text
@@ -202,7 +199,7 @@ suspend fun BehaviourContext.addTransactionToSplit(
             forteTransaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
             appendLine("🏦 Счёт: $sourceAccount")
             appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
-            append("🔢 ID: $newJournalId")
+            append("🔢 ID транзакции: $transactionId, Journal: $newJournalId")
         }
 
         val sentMessage = bot.sendMessage(

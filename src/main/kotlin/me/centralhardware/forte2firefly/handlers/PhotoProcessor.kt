@@ -92,7 +92,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
             appendLine("🏦 Счёт: $sourceAccount")
             appendLine("📅 Дата: ${transaction.dateTime.toLocalDateTime()}")
         }
-        append("🔢 ID: ${transactionResponse.data.id}")
+        append("🔢 ID транзакции: ${transactionResponse.data.id}, Journal: $journalId")
     }
 
     val sentMessage = bot.sendMessage(chatId, successMessage, linkPreviewOptions = LinkPreviewOptions.Disabled, replyMarkup = createBudgetKeyboard(transactionResponse.data.id, Budget.MAIN))
