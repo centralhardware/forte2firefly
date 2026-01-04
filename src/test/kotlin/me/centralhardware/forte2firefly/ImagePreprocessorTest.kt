@@ -10,10 +10,8 @@ class ImagePreprocessorTest {
 
     @Test
     fun `test preprocessImage does not crash`() {
-        // Create a simple test image
         val testImage = BufferedImage(100, 100, BufferedImage.TYPE_INT_RGB)
 
-        // Should not crash
         val result = ImagePreprocessor.preprocessImage(testImage)
 
         assertNotNull(result)
@@ -52,7 +50,7 @@ class ImagePreprocessorTest {
         )
 
         assertNotNull(result)
-        assertEquals(100, result!!.width) // 150 - 50
-        assertEquals(100, result.height) // 200 - 100
+        assertEquals(100, result!!.width)
+        assertEquals(100, result.height)
     }
 }

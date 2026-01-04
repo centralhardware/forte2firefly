@@ -23,22 +23,22 @@ object OCRService {
         mapOf(
             TesseractType.SPARSE to TesseractFactory.create(
                 name = "Sparse",
-                pageSegMode = 11
+                pageSegMode = TesseractType.SPARSE.pageSegMode
             ),
             TesseractType.SINGLE_LINE to TesseractFactory.create(
                 name = "SingleLine",
-                pageSegMode = 7
+                pageSegMode = TesseractType.SINGLE_LINE.pageSegMode
             ),
             TesseractType.NUMERIC to TesseractFactory.create(
                 name = "Numeric",
-                pageSegMode = 10,
+                pageSegMode = TesseractType.NUMERIC.pageSegMode,
                 language = "",
                 whitelist = ",.0123456789",
                 additionalVariables = mapOf("classify_bln_numeric_mode" to "1")
             ),
             TesseractType.NUMERIC_LINE to TesseractFactory.create(
                 name = "NumericLine",
-                pageSegMode = 7,
+                pageSegMode = TesseractType.NUMERIC_LINE.pageSegMode,
                 language = "",
                 whitelist = ",.0123456789"
             )
