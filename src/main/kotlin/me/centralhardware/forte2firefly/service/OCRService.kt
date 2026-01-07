@@ -14,6 +14,7 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatterBuilder
 import java.util.Locale
 import javax.imageio.ImageIO
 
@@ -297,10 +298,12 @@ object OCRService {
             val cleanedDate = forteDateTime
                 .replace("'s", "")
                 .replace(Regex("^O"), "0")
+                .replace(Regex("^Q"), "0")
                 .replace(Regex("^0+(\\d{2})"), "$1")
+                .replace(Regex("(january|february|march|april|may|june|july|august|september|october|november|december)s\\b", RegexOption.IGNORE_CASE), "$1")
                 .trim()
 
-            val inputFormatter = java.time.format.DateTimeFormatterBuilder()
+            val inputFormatter = DateTimeFormatterBuilder()
                 .parseCaseInsensitive()
                 .appendPattern("dd MMMM yyyy HH:mm:ss")
                 .toFormatter(Locale.ENGLISH)

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.Test
 import java.time.ZoneId
 
-class MultiplePhotosIntegrationTest {
+class   MultiplePhotosIntegrationTest {
 
     private fun testPhoto(
         photoFileName: String,
@@ -97,8 +97,8 @@ class MultiplePhotosIntegrationTest {
     }
 
     @Test
-    fun `test photo_2025-11-10_02-18-19`() = testPhoto(
-        photoFileName = "photo_2025-11-10_02-18-19.jpg",
+    fun `test nsk_grocer_usd_18_29`() = testPhoto(
+        photoFileName = "nsk_grocer_usd_18_29.jpg",
         expectedDescription = "NSK GROCER- QCM",
         expectedAmount = "18.29",
         expectedForeignAmount = "75.5",
@@ -114,8 +114,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-02-28`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-02-28.jpg",
+    fun `test coffee_103_usd_13_99`() = testPhoto(
+        photoFileName = "coffee_103_usd_13_99.jpg",
         expectedDescription = "103 COFFEE-CHOWKIT",
         expectedAmount = "13.99",
         expectedForeignAmount = "56.8",
@@ -132,8 +132,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-02-47`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-02-47.jpg",
+    fun `test grab_rides_usd_3_10`() = testPhoto(
+        photoFileName = "grab_rides_usd_3_10.jpg",
         expectedDescription = "GRAB RIDES-EC",
         expectedAmount = "3.10",
         expectedForeignAmount = "12.57",
@@ -150,8 +150,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-03-10`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-03-10.jpg",
+    fun `test lazada_usd_35_28`() = testPhoto(
+        photoFileName = "lazada_usd_35_28.jpg",
         expectedDescription = "Lazada",
         expectedAmount = "35.28",
         expectedForeignAmount = "143.5",
@@ -168,8 +168,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-03-46`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-03-46.jpg",
+    fun `test genki_world_eur_48_30`() = testPhoto(
+        photoFileName = "genki_world_eur_48_30.jpg",
         expectedDescription = "WWW.GENKI.WORLD",
         expectedAmount = "48.30",
         expectedForeignAmount = null,
@@ -186,8 +186,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-04-30`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-04-30.jpg",
+    fun `test grab_rides_usd_0_48`() = testPhoto(
+        photoFileName = "grab_rides_usd_0_48.jpg",
         expectedDescription = "GRAB RIDES-EC",
         expectedAmount = "0.48",
         expectedForeignAmount = "2",
@@ -204,8 +204,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-04-46`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-04-46.jpg",
+    fun `test lemsqzy_deskrest_usd_19_99`() = testPhoto(
+        photoFileName = "lemsqzy_deskrest_usd_19_99.jpg",
         expectedDescription = "LEMSQZY* DESKREST",
         expectedAmount = "19.99",
         expectedForeignAmount = null,
@@ -222,8 +222,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-04-50`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-04-50.jpg",
+    fun `test xsolla_kzt_8021_60`() = testPhoto(
+        photoFileName = "xsolla_kzt_8021_60.jpg",
         expectedDescription = "Xsolla *1001",
         expectedAmount = "8021.60",
         expectedForeignAmount = null,
@@ -240,8 +240,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test photo_2025-12-06_20-05-13`() = testPhoto(
-        photoFileName = "photo_2025-12-06_20-05-13.jpg",
+    fun `test watsons_usd_6_31`() = testPhoto(
+        photoFileName = "watsons_usd_6_31.jpg",
         expectedDescription = "WATSON'S QUILL CITY (M602",
         expectedAmount = "6.31",
         expectedForeignAmount = "25.9",
@@ -258,8 +258,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test img`() = testPhoto(
-        photoFileName = "img.png",
+    fun `test uber_pending_usd_13_48`() = testPhoto(
+        photoFileName = "uber_pending_usd_13_48.png",
         expectedDescription = "UBR* PENDING.UBER.COM",
         expectedAmount = "13.48",
         expectedForeignAmount = "4128.47",
@@ -276,8 +276,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test forte_transaction_12608576722`() = testPhoto(
-        photoFileName = "forte_transaction_12608576722.jpg",
+    fun `test kiri_kopi_usd_11_13`() = testPhoto(
+        photoFileName = "kiri_kopi_usd_11_13.jpg",
         expectedDescription = "KIRI KOPI COLOMBO",
         expectedAmount = "11.13",
         expectedForeignAmount = "3410",
@@ -294,8 +294,8 @@ class MultiplePhotosIntegrationTest {
     )
 
     @Test
-    fun `test forte_transaction_12543609908`() = testPhoto(
-        photoFileName = "forte_transaction_12543609908.jpg",
+    fun `test bolt_usd_1_48`() = testPhoto(
+        photoFileName = "bolt_usd_1_48.jpg",
         expectedDescription = "BOLT.EU/O/2512150631",
         expectedAmount = "1.48",
         expectedForeignAmount = "6",
@@ -309,5 +309,23 @@ class MultiplePhotosIntegrationTest {
         expectedCardLast4 = "1293",
         expectedTransactionNumber = "12543609908",
         expectedMccCode = "4121"
+    )
+
+    @Test
+    fun `test pasaraya_angkasa_usd_5_16`() = testPhoto(
+        photoFileName = "pasaraya_angkasa_usd_5_16.jpg",
+        expectedDescription = "PASARAYA ANGKASA",
+        expectedAmount = "5.16",
+        expectedForeignAmount = "20.65",
+        expectedCurrencySymbol = "$",
+        expectedYear = 2026,
+        expectedMonth = 1,
+        expectedDay = 7,
+        expectedHour = 18,
+        expectedMinute = 35,
+        expectedSecond = 24,
+        expectedCardLast4 = "1293",
+        expectedTransactionNumber = "12790559778",
+        expectedMccCode = "5411"
     )
 }
