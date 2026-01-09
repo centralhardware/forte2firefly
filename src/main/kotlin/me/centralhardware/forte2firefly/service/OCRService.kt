@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.centralhardware.forte2firefly.model.ForteTransaction
 import net.sourceforge.tess4j.Tesseract
+import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -63,6 +64,22 @@ object OCRService {
                 debugName = config.name
             ) ?: return null
 
+            if (config.scale > 1) {
+                val scaledWidth = region.width * config.scale
+                val scaledHeight = region.height * config.scale
+                val scaled = BufferedImage(scaledWidth, scaledHeight, BufferedImage.TYPE_INT_RGB)
+                val g2d = scaled.createGraphics()
+                try {
+                    g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC)
+                    g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+                    g2d.drawImage(region, 0, 0, scaledWidth, scaledHeight, null)
+                } finally {
+                    g2d.dispose()
+                }
+                region = scaled
+            }
+
             if (config.binarize) {
                 region = ImagePreprocessor.binarizeImage(region, config.binarizeThreshold)
                 if (debugMode) {
@@ -70,7 +87,14 @@ object OCRService {
                 }
             }
 
-            val result = getTesseract(config.tesseractType).doOCR(region).trim()
+            val tesseract = getTesseract(config.tesseractType)
+            if (config.whitelist != null) {
+                tesseract.setVariable("tessedit_char_whitelist", config.whitelist)
+            }
+            val result = tesseract.doOCR(region).trim()
+            if (config.whitelist != null) {
+                tesseract.setVariable("tessedit_char_whitelist", "")
+            }
             KSLog.info("${config.name} OCR raw result: '$result'")
             result.ifEmpty { null }
         } catch (e: Exception) {

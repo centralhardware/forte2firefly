@@ -328,4 +328,22 @@ class   MultiplePhotosIntegrationTest {
         expectedTransactionNumber = "12790559778",
         expectedMccCode = "5411"
     )
+
+    @Test
+    fun `test grab_ec_usd_7_10`() = testPhoto(
+        photoFileName = "grab_ec_usd_7_10.jpg",
+        expectedDescription = "GRAB-EC",
+        expectedAmount = "7.10",
+        expectedForeignAmount = "28.52",
+        expectedCurrencySymbol = "$",
+        expectedYear = 2026,
+        expectedMonth = 1,
+        expectedDay = 9,
+        expectedHour = 7,
+        expectedMinute = 55,
+        expectedSecond = 17,
+        expectedCardLast4 = "1293",
+        expectedTransactionNumber = "12803935825",
+        expectedMccCode = "5499"
+    )
 }

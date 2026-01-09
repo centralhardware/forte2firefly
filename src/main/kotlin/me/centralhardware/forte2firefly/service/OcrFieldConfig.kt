@@ -6,7 +6,9 @@ sealed class OcrFieldConfig(
     val tesseractType: TesseractType,
     val invert: Boolean = true,
     val binarize: Boolean = false,
-    val binarizeThreshold: Int = 128
+    val binarizeThreshold: Int = 128,
+    val scale: Int = 1,
+    val whitelist: String? = null
 ) {
     data object Merchant : OcrFieldConfig(
         name = "merchant",
@@ -17,7 +19,11 @@ sealed class OcrFieldConfig(
     data object Amount : OcrFieldConfig(
         name = "amount",
         region = ReceiptRegionConfig.AMOUNT,
-        tesseractType = TesseractType.SINGLE_LINE
+        tesseractType = TesseractType.SINGLE_LINE,
+        binarize = true,
+        binarizeThreshold = 150,
+        scale = 3,
+        whitelist = ",.0123456789-$€£₸T "
     )
 
     data object DateTime : OcrFieldConfig(
