@@ -22,13 +22,15 @@ import me.centralhardware.forte2firefly.service.TransactionParser
 suspend fun ForteTransaction.toTransactionSplit(
     detectedCurrency: String,
     sourceAccount: String
-): TransactionSplit {
+): TransactionSplitResult {
+    val conversionResult = ExchangeRateService.convertToUSD(amount, detectedCurrency)
+
     val (finalAmount, finalCurrency, finalForeignAmount, finalForeignCurrency) =
-        when (val result = ExchangeRateService.convertToUSD(amount, detectedCurrency)) {
+        when (conversionResult) {
             is ConversionResult.Success -> {
-                KSLog.info("Converted $amount $detectedCurrency → ${result.convertedAmount} USD")
+                KSLog.info("Converted $amount $detectedCurrency → ${conversionResult.convertedAmount} USD")
                 CurrencyData(
-                    amount = ExchangeRateService.formatAmount(result.convertedAmount),
+                    amount = ExchangeRateService.formatAmount(conversionResult.convertedAmount),
                     currencyCode = "USD",
                     foreignAmount = amount,
                     foreignCurrencyCode = detectedCurrency
@@ -59,7 +61,7 @@ suspend fun ForteTransaction.toTransactionSplit(
 
     val tags = mccCode?.let { listOf("mcc:$it") }
 
-    return TransactionSplit(
+    val split = TransactionSplit(
         type = "withdrawal",
         date = TransactionParser.convertToFireflyDate(dateTime),
         amount = finalAmount,
@@ -74,6 +76,8 @@ suspend fun ForteTransaction.toTransactionSplit(
         budgetName = Budget.MAIN.budgetName,
         tags = tags
     )
+
+    return TransactionSplitResult(split, conversionResult)
 }
 
 private data class CurrencyData(
@@ -81,6 +85,11 @@ private data class CurrencyData(
     val currencyCode: String,
     val foreignAmount: String?,
     val foreignCurrencyCode: String?
+)
+
+data class TransactionSplitResult(
+    val split: TransactionSplit,
+    val conversionResult: ConversionResult
 )
 
 suspend fun BehaviourContext.processPhotoTransaction(
@@ -99,8 +108,10 @@ suspend fun BehaviourContext.processPhotoTransaction(
     val sourceAccount = Config.currencyAccounts[detectedCurrency]
         ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
+    val splitResult = transaction.toTransactionSplit(detectedCurrency, sourceAccount)
+
     val transactionRequest = TransactionRequest(
-        transactions = listOf(transaction.toTransactionSplit(detectedCurrency, sourceAccount))
+        transactions = listOf(splitResult.split)
     )
 
     val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)
@@ -124,6 +135,22 @@ suspend fun BehaviourContext.processPhotoTransaction(
         }
         appendLine("📝 ${transaction.description}")
         appendLine("💰 ${transaction.amount} $detectedCurrency")
+
+        when (val result = splitResult.conversionResult) {
+            is ConversionResult.Success -> {
+                val formattedAmount = ExchangeRateService.formatAmount(result.convertedAmount)
+                val formattedRate = String.format("%.4f", result.conversionRate)
+                appendLine("🔄 Сконвертировано: $formattedAmount USD")
+                appendLine("   Курс: 1 ${result.originalCurrency} = $formattedRate USD")
+            }
+            is ConversionResult.ApiFailed -> {
+                appendLine("⚠️ Конвертация в USD недоступна, сохранено в $detectedCurrency")
+            }
+            is ConversionResult.NoConversionNeeded -> {
+                // Ничего не добавляем
+            }
+        }
+
         transaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
         if (progressPrefix.isEmpty()) {
             appendLine("🏦 Счёт: $sourceAccount")

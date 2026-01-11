@@ -146,9 +146,9 @@ suspend fun BehaviourContext.addTransactionToSplit(
         val sourceAccount = Config.currencyAccounts[detectedCurrency]
             ?: throw RuntimeException("No account configured for currency $detectedCurrency")
 
-        val newSplit = forteTransaction.toTransactionSplit(detectedCurrency, sourceAccount)
+        val splitResult = forteTransaction.toTransactionSplit(detectedCurrency, sourceAccount)
 
-        val allSplits = existingSplits + newSplit
+        val allSplits = existingSplits + splitResult.split
 
         val descriptions = allSplits.map { it.description }
         val groupTitle = if (descriptions.toSet().size == 1) {
