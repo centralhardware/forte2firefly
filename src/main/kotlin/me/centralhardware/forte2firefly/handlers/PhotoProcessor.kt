@@ -1,5 +1,8 @@
 package me.centralhardware.forte2firefly.handlers
 
+import dev.inmo.kslog.common.KSLog
+import dev.inmo.kslog.common.info
+import dev.inmo.kslog.common.warning
 import dev.inmo.tgbotapi.extensions.api.send.sendMessage
 import dev.inmo.tgbotapi.extensions.behaviour_builder.BehaviourContext
 import dev.inmo.tgbotapi.types.LinkPreviewOptions
@@ -9,35 +12,76 @@ import me.centralhardware.forte2firefly.model.Budget
 import me.centralhardware.forte2firefly.model.ForteTransaction
 import me.centralhardware.forte2firefly.model.TransactionRequest
 import me.centralhardware.forte2firefly.model.TransactionSplit
+import me.centralhardware.forte2firefly.service.ConversionResult
 import me.centralhardware.forte2firefly.service.CurrencyService
+import me.centralhardware.forte2firefly.service.ExchangeRateService
 import me.centralhardware.forte2firefly.service.FireflyApiClient
 import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 
-fun ForteTransaction.toTransactionSplit(
+suspend fun ForteTransaction.toTransactionSplit(
     detectedCurrency: String,
     sourceAccount: String
 ): TransactionSplit {
-    val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
+    val (finalAmount, finalCurrency, finalForeignAmount, finalForeignCurrency) =
+        when (val result = ExchangeRateService.convertToUSD(amount, detectedCurrency)) {
+            is ConversionResult.Success -> {
+                KSLog.info("Converted $amount $detectedCurrency → ${result.convertedAmount} USD")
+                CurrencyData(
+                    amount = ExchangeRateService.formatAmount(result.convertedAmount),
+                    currencyCode = "USD",
+                    foreignAmount = amount,
+                    foreignCurrencyCode = detectedCurrency
+                )
+            }
+
+            is ConversionResult.ApiFailed -> {
+                KSLog.warning("Exchange API failed, saving in $detectedCurrency")
+                val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
+                CurrencyData(
+                    amount = amount,
+                    currencyCode = detectedCurrency,
+                    foreignAmount = transactionAmount,
+                    foreignCurrencyCode = foreignCurrency
+                )
+            }
+
+            is ConversionResult.NoConversionNeeded -> {
+                val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
+                CurrencyData(
+                    amount = amount,
+                    currencyCode = detectedCurrency,
+                    foreignAmount = transactionAmount,
+                    foreignCurrencyCode = foreignCurrency
+                )
+            }
+        }
 
     val tags = mccCode?.let { listOf("mcc:$it") }
 
     return TransactionSplit(
         type = "withdrawal",
         date = TransactionParser.convertToFireflyDate(dateTime),
-        amount = amount,
+        amount = finalAmount,
         description = description,
         sourceName = sourceAccount,
         destinationName = description,
-        currencyCode = detectedCurrency,
-        foreignAmount = transactionAmount,
-        foreignCurrencyCode = foreignCurrency,
+        currencyCode = finalCurrency,
+        foreignAmount = finalForeignAmount,
+        foreignCurrencyCode = finalForeignCurrency,
         externalId = transactionNumber,
         notes = null,
         budgetName = Budget.MAIN.budgetName,
         tags = tags
     )
 }
+
+private data class CurrencyData(
+    val amount: String,
+    val currencyCode: String,
+    val foreignAmount: String?,
+    val foreignCurrencyCode: String?
+)
 
 suspend fun BehaviourContext.processPhotoTransaction(
     photoBytes: ByteArray,

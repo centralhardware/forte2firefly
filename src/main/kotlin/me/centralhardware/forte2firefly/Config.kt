@@ -13,6 +13,8 @@ object Config {
 
     val defaultCurrency: String = System.getenv("DEFAULT_CURRENCY") ?: "MYR"
 
+    val exchangeRateApiKey: String? = System.getenv("EXCHANGE_RATE_API_KEY")
+
     val tessdataPrefix: String = System.getenv("TESSDATA_PREFIX") ?: "/usr/share/tesseract-ocr/5/tessdata/"
 
     val currencyAccounts: Map<String, String> = mapOf(
