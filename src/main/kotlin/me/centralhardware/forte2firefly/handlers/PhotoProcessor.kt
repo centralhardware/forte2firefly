@@ -139,9 +139,10 @@ suspend fun BehaviourContext.processPhotoTransaction(
         when (val result = splitResult.conversionResult) {
             is ConversionResult.Success -> {
                 val formattedAmount = ExchangeRateService.formatAmount(result.convertedAmount)
-                val formattedRate = String.format("%.4f", result.conversionRate)
+                val reverseRate = 1.0 / result.conversionRate
+                val formattedRate = String.format("%.4f", reverseRate)
                 appendLine("🔄 Сконвертировано: $formattedAmount USD")
-                appendLine("   Курс: 1 ${result.originalCurrency} = $formattedRate USD")
+                appendLine("Курс: 1 USD = $formattedRate ${result.originalCurrency}")
             }
             is ConversionResult.ApiFailed -> {
                 appendLine("⚠️ Конвертация в USD недоступна, сохранено в $detectedCurrency")
