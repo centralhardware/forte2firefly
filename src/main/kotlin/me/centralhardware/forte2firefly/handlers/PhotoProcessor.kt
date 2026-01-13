@@ -20,41 +20,52 @@ import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 
 suspend fun ForteTransaction.toTransactionSplit(
-    detectedCurrency: String,
-    sourceAccount: String
+    detectedCurrency: String
 ): TransactionSplitResult {
     val conversionResult = ExchangeRateService.convertToUSD(amount, detectedCurrency)
 
-    val (finalAmount, finalCurrency, finalForeignAmount, finalForeignCurrency) =
+    val (finalAmount, finalCurrency, finalForeignAmount, finalForeignCurrency, finalSourceAccount) =
         when (conversionResult) {
             is ConversionResult.Success -> {
                 KSLog.info("Converted $amount $detectedCurrency → ${conversionResult.convertedAmount} USD")
-                CurrencyData(
+                // При успешной конвертации используем USD счет и сохраняем оригинальную сумму в foreign amount
+                val usdAccount = Config.currencyAccounts["USD"]
+                    ?: throw RuntimeException("No USD account configured for currency conversion")
+                CurrencyDataWithAccount(
                     amount = ExchangeRateService.formatAmount(conversionResult.convertedAmount),
                     currencyCode = "USD",
                     foreignAmount = amount,
-                    foreignCurrencyCode = detectedCurrency
+                    foreignCurrencyCode = detectedCurrency,
+                    sourceAccount = usdAccount
                 )
             }
 
             is ConversionResult.ApiFailed -> {
                 KSLog.warning("Exchange API failed, saving in $detectedCurrency")
+                // При ошибке конвертации используем счет оригинальной валюты
+                val originalAccount = Config.currencyAccounts[detectedCurrency]
+                    ?: throw RuntimeException("No account configured for currency $detectedCurrency")
                 val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
-                CurrencyData(
+                CurrencyDataWithAccount(
                     amount = amount,
                     currencyCode = detectedCurrency,
                     foreignAmount = transactionAmount,
-                    foreignCurrencyCode = foreignCurrency
+                    foreignCurrencyCode = foreignCurrency,
+                    sourceAccount = originalAccount
                 )
             }
 
             is ConversionResult.NoConversionNeeded -> {
+                // USD или валюта без конвертации - используем счет этой валюты
+                val originalAccount = Config.currencyAccounts[detectedCurrency]
+                    ?: throw RuntimeException("No account configured for currency $detectedCurrency")
                 val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
-                CurrencyData(
+                CurrencyDataWithAccount(
                     amount = amount,
                     currencyCode = detectedCurrency,
                     foreignAmount = transactionAmount,
-                    foreignCurrencyCode = foreignCurrency
+                    foreignCurrencyCode = foreignCurrency,
+                    sourceAccount = originalAccount
                 )
             }
         }
@@ -66,7 +77,7 @@ suspend fun ForteTransaction.toTransactionSplit(
         date = TransactionParser.convertToFireflyDate(dateTime),
         amount = finalAmount,
         description = description,
-        sourceName = sourceAccount,
+        sourceName = finalSourceAccount,
         destinationName = description,
         currencyCode = finalCurrency,
         foreignAmount = finalForeignAmount,
@@ -80,11 +91,12 @@ suspend fun ForteTransaction.toTransactionSplit(
     return TransactionSplitResult(split, conversionResult)
 }
 
-private data class CurrencyData(
+private data class CurrencyDataWithAccount(
     val amount: String,
     val currencyCode: String,
     val foreignAmount: String?,
-    val foreignCurrencyCode: String?
+    val foreignCurrencyCode: String?,
+    val sourceAccount: String
 )
 
 data class TransactionSplitResult(
@@ -105,17 +117,20 @@ suspend fun BehaviourContext.processPhotoTransaction(
     }
 
     val detectedCurrency = CurrencyService.detectCurrency(transaction.currencySymbol)
-    val sourceAccount = Config.currencyAccounts[detectedCurrency]
-        ?: throw RuntimeException("No account configured for currency $detectedCurrency")
-
-    val splitResult = transaction.toTransactionSplit(detectedCurrency, sourceAccount)
+    val splitResult = transaction.toTransactionSplit(detectedCurrency)
 
     val transactionRequest = TransactionRequest(
         transactions = listOf(splitResult.split)
     )
 
+    KSLog.info("Creating transaction with: amount=${splitResult.split.amount}, currency=${splitResult.split.currencyCode}, foreignAmount=${splitResult.split.foreignAmount}, foreignCurrency=${splitResult.split.foreignCurrencyCode}")
+
     val transactionResponse = FireflyApiClient.createTransaction(transactionRequest)
-    val journalId = transactionResponse.data.attributes.transactions.first().transactionJournalId
+
+    val savedTransaction = transactionResponse.data.attributes.transactions.first()
+    KSLog.info("Firefly returned: amount=${savedTransaction.amount}, currency=${savedTransaction.currencyCode}, foreignAmount=${savedTransaction.foreignAmount}, foreignCurrency=${savedTransaction.foreignCurrencyCode}")
+
+    val journalId = savedTransaction.transactionJournalId
         ?: throw RuntimeException("Transaction journal ID is missing")
 
     FireflyApiClient.createAndUploadAttachment(
@@ -154,7 +169,7 @@ suspend fun BehaviourContext.processPhotoTransaction(
 
         transaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
         if (progressPrefix.isEmpty()) {
-            appendLine("🏦 Счёт: $sourceAccount")
+            appendLine("🏦 Счёт: ${splitResult.split.sourceName}")
             appendLine("📅 Дата: ${transaction.dateTime.toLocalDateTime()}")
         }
         append("🔢 ID транзакции: ${transactionResponse.data.id}, Journal: $journalId")
