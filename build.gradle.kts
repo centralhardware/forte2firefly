@@ -33,7 +33,7 @@ dependencies {
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
 
     // Kotlinx Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
 
     // Logging
     implementation("dev.inmo:kslog:$kslogVersion")
