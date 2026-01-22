@@ -13,7 +13,7 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val ktorVersion = "3.3.3"
+val ktorVersion = "3.4.0"
 val tgbotapiVersion = "30.0.2"
 val kslogVersion = "1.5.2"
 val tesseractVersion = "5.18.0"
