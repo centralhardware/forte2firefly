@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "2.3.0"
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("plugin.serialization") version "2.3.10"
     id("com.google.cloud.tools.jib") version "3.5.2"
     application
 }
