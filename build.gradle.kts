@@ -46,7 +46,8 @@ dependencies {
     implementation("net.sourceforge.tess4j:tess4j:$tesseractVersion")
 
     // ClickHouse
-    implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
+    implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
+    implementation("com.github.seratch:kotliquery:1.9.0")
 
     testImplementation(kotlin("test"))
     testImplementation("io.mockk:mockk:1.14.9")

@@ -1,63 +1,47 @@
 package me.centralhardware.forte2firefly.service
 
-import com.clickhouse.client.ClickHouseClient
-import com.clickhouse.client.ClickHouseCredentials
-import com.clickhouse.client.ClickHouseNode
-import com.clickhouse.client.ClickHouseProtocol
+import com.clickhouse.jdbc.ClickHouseDataSource
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.debug
 import dev.inmo.kslog.common.info
+import kotliquery.queryOf
+import kotliquery.sessionOf
 import me.centralhardware.forte2firefly.Config
+import java.util.*
+import javax.sql.DataSource
 
 object DatabaseService {
 
-    private fun createClient(): ClickHouseClient {
-        return ClickHouseClient.newInstance(ClickHouseProtocol.HTTP)
-    }
-
-    private fun createNode(): ClickHouseNode {
-        val url = Config.clickhouseUrl.removePrefix("http://").removePrefix("https://")
-        val parts = url.split(":")
-        val host = parts[0]
-        val port = parts.getOrNull(1)?.toIntOrNull() ?: 8123
-
-        val builder = ClickHouseNode.builder()
-            .host(host)
-            .port(ClickHouseProtocol.HTTP, port)
-            .database(Config.clickhouseDatabase)
-
-        if (Config.clickhouseUser != null && Config.clickhousePassword != null) {
-            builder.credentials(ClickHouseCredentials.fromUserAndPassword(
-                Config.clickhouseUser,
-                Config.clickhousePassword
-            ))
+    private val dataSource: DataSource by lazy {
+        val props = Properties().apply {
+            Config.clickhouseUser?.let { put("user", it) }
+            Config.clickhousePassword?.let { put("password", it) }
         }
 
-        return builder.build()
+        ClickHouseDataSource(Config.clickhouseUrl, props)
     }
 
     fun getCurrentCountry(): String? {
         val query = """
             SELECT country
-            FROM country_days_tracker_bot.country_days_tracker
+            FROM ${Config.clickhouseDatabase}.country_days_tracker
             ORDER BY date_time DESC
             LIMIT 1
         """.trimIndent()
 
         KSLog.debug("Querying ClickHouse for current country: $query")
 
-        val client = createClient()
-        val node = createNode()
-
-        return client.read(node).query(query).executeAndWait().use { response ->
-            response.firstRecord()?.let { record ->
-                val country = record.getValue(0).asString()
-                KSLog.info("Current country from ClickHouse: $country")
-                country
-            } ?: run {
-                KSLog.info("No country data found in ClickHouse")
-                null
-            }
+        return sessionOf(dataSource).use { session ->
+            session.run(
+                queryOf(query).map { row ->
+                    row.string("country")
+                }.asSingle
+            )
+        }?.also { country ->
+            KSLog.info("Current country from ClickHouse: $country")
+        } ?: run {
+            KSLog.info("No country data found in ClickHouse")
+            null
         }
     }
 }
