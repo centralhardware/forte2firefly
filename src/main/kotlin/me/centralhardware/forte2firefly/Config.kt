@@ -11,8 +11,6 @@ object Config {
             ?: throw IllegalArgumentException("FIREFLY_TOKEN environment variable is not set")
     }
 
-    val defaultCurrency: String = System.getenv("DEFAULT_CURRENCY") ?: "MYR"
-
     val exchangeRateApiKey: String? = System.getenv("EXCHANGE_RATE_API_KEY")
 
     val tessdataPrefix: String = System.getenv("TESSDATA_PREFIX") ?: "/usr/share/tesseract-ocr/5/tessdata/"
@@ -22,4 +20,14 @@ object Config {
         "EUR" to "forte solo signature (EUR)",
         "KZT" to "forte solo signature (KZT)"
     )
+
+    val clickhouseUrl: String = System.getenv("CLICKHOUSE_URL")
+        ?: "http://localhost:8123"
+
+    val clickhouseDatabase: String = System.getenv("CLICKHOUSE_DATABASE")
+        ?: "country_days_tracker_bot"
+
+    val clickhouseUser: String? = System.getenv("CLICKHOUSE_USER")
+
+    val clickhousePassword: String? = System.getenv("CLICKHOUSE_PASSWORD")
 }

@@ -57,10 +57,16 @@ export $(cat .env | xargs) && java -jar build/libs/forte2firefly-1.0-SNAPSHOT.ja
 ## Логика валют
 
 - **Основная валюта транзакции**: Определяется автоматически по символу валюты (USD, EUR, GBP и т.д.)
-- **Transaction amount**: По умолчанию используется MYR (настраивается через `DEFAULT_CURRENCY`)
+- **Foreign currency**: Определяется динамически по текущей локации из ClickHouse через REST Countries API
+  - Получает последнюю известную страну из БД `current_country_updater`
+  - Использует REST Countries API для определения официальной валюты (ISO 4217)
+  - Кэширует результаты для оптимизации
+  - Если локация неизвестна, foreign_currency_code остается `null`
 
 Пример:
-- Фото показывает: `-18,29 $` и `75.5`
+- Фото показывает: `-18,29 $` и `75.5` (находясь в Malaysia)
+- Бот получает страну "Malaysia" из ClickHouse
+- REST Countries API возвращает валюту "MYR"
 - Бот создаст транзакцию: `18.29 USD` с foreign amount `75.5 MYR`
 
 ## OCR Сервис

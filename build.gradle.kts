@@ -17,6 +17,7 @@ val ktorVersion = "3.4.0"
 val tgbotapiVersion = "30.0.2"
 val kslogVersion = "1.6.0"
 val tesseractVersion = "5.18.0"
+val clickhouseVersion = "0.9.6"
 
 dependencies {
     // Telegram Bot API
@@ -43,6 +44,9 @@ dependencies {
 
     // Tesseract OCR
     implementation("net.sourceforge.tess4j:tess4j:$tesseractVersion")
+
+    // ClickHouse
+    implementation("com.clickhouse:clickhouse-http-client:$clickhouseVersion")
 
     testImplementation(kotlin("test"))
     testImplementation("io.mockk:mockk:1.14.9")

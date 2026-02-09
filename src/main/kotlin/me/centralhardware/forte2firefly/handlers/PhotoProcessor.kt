@@ -20,7 +20,8 @@ import me.centralhardware.forte2firefly.service.OCRService
 import me.centralhardware.forte2firefly.service.TransactionParser
 
 suspend fun ForteTransaction.toTransactionSplit(
-    detectedCurrency: String
+    detectedCurrency: String,
+    defaultCurrency: String?
 ): TransactionSplitResult {
     val conversionResult = ExchangeRateService.convertToUSD(amount, detectedCurrency)
 
@@ -45,7 +46,7 @@ suspend fun ForteTransaction.toTransactionSplit(
                 // При ошибке конвертации используем счет оригинальной валюты
                 val originalAccount = Config.currencyAccounts[detectedCurrency]
                     ?: throw RuntimeException("No account configured for currency $detectedCurrency")
-                val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
+                val foreignCurrency = if (transactionAmount != null) defaultCurrency else null
                 CurrencyDataWithAccount(
                     amount = amount,
                     currencyCode = detectedCurrency,
@@ -59,7 +60,7 @@ suspend fun ForteTransaction.toTransactionSplit(
                 // USD или валюта без конвертации - используем счет этой валюты
                 val originalAccount = Config.currencyAccounts[detectedCurrency]
                     ?: throw RuntimeException("No account configured for currency $detectedCurrency")
-                val foreignCurrency = if (transactionAmount != null) Config.defaultCurrency else null
+                val foreignCurrency = if (transactionAmount != null) defaultCurrency else null
                 CurrencyDataWithAccount(
                     amount = amount,
                     currencyCode = detectedCurrency,
@@ -117,7 +118,8 @@ suspend fun BehaviourContext.processPhotoTransaction(
     }
 
     val detectedCurrency = CurrencyService.detectCurrency(transaction.currencySymbol)
-    val splitResult = transaction.toTransactionSplit(detectedCurrency)
+    val defaultCurrency = CurrencyService.getDefaultCurrency()
+    val splitResult = transaction.toTransactionSplit(detectedCurrency, defaultCurrency)
 
     val transactionRequest = TransactionRequest(
         transactions = listOf(splitResult.split)
@@ -167,7 +169,11 @@ suspend fun BehaviourContext.processPhotoTransaction(
             }
         }
 
-        transaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
+        transaction.transactionAmount?.let {
+            if (defaultCurrency != null) {
+                appendLine("💵 В $defaultCurrency: $it")
+            }
+        }
         if (progressPrefix.isEmpty()) {
             appendLine("🏦 Счёт: ${splitResult.split.sourceName}")
             appendLine("📅 Дата: ${transaction.dateTime.toLocalDateTime()}")

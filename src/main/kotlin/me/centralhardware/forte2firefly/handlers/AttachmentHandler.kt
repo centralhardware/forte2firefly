@@ -143,7 +143,8 @@ suspend fun BehaviourContext.addTransactionToSplit(
             ?: throw RuntimeException("Failed to parse transaction from photo")
 
         val detectedCurrency = CurrencyService.detectCurrency(forteTransaction.currencySymbol)
-        val splitResult = forteTransaction.toTransactionSplit(detectedCurrency)
+        val defaultCurrency = CurrencyService.getDefaultCurrency()
+        val splitResult = forteTransaction.toTransactionSplit(detectedCurrency, defaultCurrency)
 
         val allSplits = existingSplits + splitResult.split
 
@@ -182,7 +183,11 @@ suspend fun BehaviourContext.addTransactionToSplit(
             appendLine()
             appendLine("📝 ${forteTransaction.description}")
             appendLine("💰 ${forteTransaction.amount} $detectedCurrency")
-            forteTransaction.transactionAmount?.let { appendLine("💵 В ${Config.defaultCurrency}: $it") }
+            forteTransaction.transactionAmount?.let {
+                if (defaultCurrency != null) {
+                    appendLine("💵 В $defaultCurrency: $it")
+                }
+            }
             appendLine("🏦 Счёт: ${splitResult.split.sourceName}")
             appendLine("📅 Дата: ${forteTransaction.dateTime.toLocalDateTime()}")
             append("🔢 ID транзакции: $transactionId, Journal: $newJournalId")
