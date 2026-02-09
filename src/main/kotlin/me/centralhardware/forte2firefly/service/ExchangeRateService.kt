@@ -19,24 +19,7 @@ import me.centralhardware.forte2firefly.model.ExchangeRateResponse
 
 object ExchangeRateService {
 
-    private val client = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-            })
-        }
-
-        install(Logging) {
-            logger = Logger.DEFAULT
-            level = LogLevel.INFO
-        }
-
-        install(HttpTimeout) {
-            requestTimeoutMillis = 10000
-            connectTimeoutMillis = 5000
-        }
-    }
+    private val client = HttpClientFactory.defaultClient
 
     suspend fun convertToUSD(
         amount: String,

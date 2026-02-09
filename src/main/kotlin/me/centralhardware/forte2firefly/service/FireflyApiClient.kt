@@ -20,29 +20,7 @@ import dev.inmo.kslog.common.info
 
 object FireflyApiClient {
 
-    private val client = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                prettyPrint = true
-            })
-        }
-
-        install(Logging) {
-            logger = Logger.DEFAULT
-            level = LogLevel.INFO
-        }
-
-        install(DefaultRequest) {
-            header("Authorization", "Bearer ${Config.fireflyToken}")
-            header("Accept", "application/vnd.api+json")
-            contentType(ContentType.Application.Json)
-        }
-
-        defaultRequest {
-            url(Config.fireflyBaseUrl)
-        }
-    }
+    private val client = HttpClientFactory.fireflyClient
 
     private suspend inline fun <reified T> HttpResponse.handleResponse(operationName: String): T {
         if (!status.isSuccess()) {
@@ -89,6 +67,7 @@ object FireflyApiClient {
         val uploadUrl = attachmentResponse.data.attributes.uploadUrl
         if (uploadUrl != null) {
             client.post(uploadUrl) {
+                header("Authorization", "Bearer ${Config.fireflyToken}")
                 setBody(fileBytes)
                 contentType(ContentType.Application.OctetStream)
             }.handleResponseUnit("upload attachment to Firefly")
@@ -141,7 +120,8 @@ object FireflyApiClient {
     }
 
     suspend fun getBudgets(): BudgetListResponse {
-        return client.get("/api/v1/budgets").handleResponse("get budgets from Firefly")
+        return client.get("/api/v1/budgets")
+            .handleResponse("get budgets from Firefly")
     }
 
 }
