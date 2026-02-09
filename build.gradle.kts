@@ -48,6 +48,7 @@ dependencies {
     // ClickHouse
     implementation("com.clickhouse:clickhouse-jdbc:$clickhouseVersion")
     implementation("com.github.seratch:kotliquery:1.9.1")
+    implementation("com.zaxxer:HikariCP:6.2.1")
 
     testImplementation(kotlin("test"))
     testImplementation("io.mockk:mockk:1.14.9")

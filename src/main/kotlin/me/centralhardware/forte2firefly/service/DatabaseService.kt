@@ -1,24 +1,24 @@
 package me.centralhardware.forte2firefly.service
 
-import com.clickhouse.jdbc.ClickHouseDataSource
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import dev.inmo.kslog.common.KSLog
 import dev.inmo.kslog.common.debug
 import dev.inmo.kslog.common.info
 import kotliquery.queryOf
 import kotliquery.sessionOf
 import me.centralhardware.forte2firefly.Config
-import java.util.*
 import javax.sql.DataSource
 
 object DatabaseService {
 
     private val dataSource: DataSource by lazy {
-        val props = Properties().apply {
-            Config.clickhouseUser?.let { put("user", it) }
-            Config.clickhousePassword?.let { put("password", it) }
-        }
-
-        ClickHouseDataSource(Config.clickhouseUrl, props)
+        HikariConfig().apply {
+            jdbcUrl = Config.clickhouseUrl
+            maximumPoolSize = 5
+            minimumIdle = 1
+            connectionTimeout = 10000
+        }.let { HikariDataSource(it) }
     }
 
     fun getCurrentCountry(): String? {

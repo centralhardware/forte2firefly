@@ -21,13 +21,11 @@ object Config {
         "KZT" to "forte solo signature (KZT)"
     )
 
-    val clickhouseUrl: String = System.getenv("CLICKHOUSE_URL")
-        ?: "http://localhost:8123"
+    val clickhouseUrl: String by lazy {
+        System.getenv("CLICKHOUSE_URL")
+            ?: throw IllegalArgumentException("CLICKHOUSE_URL environment variable is not set")
+    }
 
     val clickhouseDatabase: String = System.getenv("CLICKHOUSE_DATABASE")
         ?: "country_days_tracker_bot"
-
-    val clickhouseUser: String? = System.getenv("CLICKHOUSE_USER")
-
-    val clickhousePassword: String? = System.getenv("CLICKHOUSE_PASSWORD")
 }
